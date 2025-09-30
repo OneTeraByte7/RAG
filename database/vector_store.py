@@ -1,0 +1,270 @@
+"""
+Vector database for semantic search using ChromaDB
+"""
+import chromadb
+from chromadb.config import Settings
+from typing import List, Dict, Optional, Union
+import numpy as np
+from loguru import logger
+from pathlib import Path
+
+from config.settings import settings
+
+
+class VectorStore:
+    """ChromaDB vector store for multimodal embeddings"""
+    
+    def __init__(self, persist_directory: str = None):
+        self.persist_directory = persist_directory or str(settings.VECTOR_DB_DIR)
+        
+        logger.info(f"Initializing ChromaDB at {self.persist_directory}")
+        
+        # Initialize ChromaDB client
+        self.client = chromadb.Client(Settings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=self.persist_directory,
+            anonymized_telemetry=False
+        ))
+        
+        # Create or get collections
+        self.text_collection = self._get_or_create_collection("text_chunks")
+        self.image_collection = self._get_or_create_collection("image_embeddings")
+        self.audio_collection = self._get_or_create_collection("audio_transcripts")
+        
+        logger.info("Vector store initialized")
+    
+    def _get_or_create_collection(self, name: str):
+        """Get existing collection or create new one"""
+        try:
+            collection = self.client.get_collection(name)
+            logger.info(f"Loaded existing collection: {name}")
+        except:
+            collection = self.client.create_collection(
+                name=name,
+                metadata={"hnsw:space": settings.CHROMA_DISTANCE_FUNCTION}
+            )
+            logger.info(f"Created new collection: {name}")
+        
+        return collection
+    
+    def add_text_chunks(
+        self,
+        chunks: List[Dict],
+        embeddings: np.ndarray
+    ) -> None:
+        """
+        Add text chunks to vector store
+        
+        Args:
+            chunks: List of chunk dicts with text and metadata
+            embeddings: Corresponding embeddings
+        """
+        if len(chunks) == 0:
+            return
+        
+        ids = [f"text_{chunk['metadata'].get('doc_id', 'unknown')}_{chunk['chunk_id']}" 
+               for chunk in chunks]
+        
+        texts = [chunk["text"] for chunk in chunks]
+        
+        metadatas = [
+            {
+                "type": "text",
+                "source": chunk["metadata"].get("source", "unknown"),
+                "doc_id": chunk["metadata"].get("doc_id", "unknown"),
+                "page": str(chunk["metadata"].get("page", "")),
+                "chunk_id": str(chunk["chunk_id"])
+            }
+            for chunk in chunks
+        ]
+        
+        self.text_collection.add(
+            ids=ids,
+            embeddings=embeddings.tolist(),
+            documents=texts,
+            metadatas=metadatas
+        )
+        
+        logger.info(f"Added {len(chunks)} text chunks to vector store")
+    
+    def add_images(
+        self,
+        images: List[Dict],
+        embeddings: np.ndarray
+    ) -> None:
+        """
+        Add image embeddings to vector store
+        
+        Args:
+            images: List of image data dicts
+            embeddings: Corresponding visual embeddings
+        """
+        if len(images) == 0:
+            return
+        
+        ids = [f"image_{img['id']}" for img in images]
+        
+        # Use OCR text as document
+        documents = [img.get("text", "") for img in images]
+        
+        metadatas = [
+            {
+                "type": "image",
+                "source": img["source"],
+                "image_id": img["id"],
+                "file_path": img["file_path"],
+                "has_text": str(img.get("has_text", False))
+            }
+            for img in images
+        ]
+        
+        self.image_collection.add(
+            ids=ids,
+            embeddings=embeddings.tolist(),
+            documents=documents,
+            metadatas=metadatas
+        )
+        
+        logger.info(f"Added {len(images)} images to vector store")
+    
+    def add_audio_chunks(
+        self,
+        chunks: List[Dict],
+        embeddings: np.ndarray,
+        audio_metadata: Dict
+    ) -> None:
+        """
+        Add audio transcript chunks to vector store
+        
+        Args:
+            chunks: List of audio chunk dicts
+            embeddings: Corresponding embeddings
+            audio_metadata: Metadata about the audio file
+        """
+        if len(chunks) == 0:
+            return
+        
+        audio_id = audio_metadata.get("audio_id", "unknown")
+        ids = [f"audio_{audio_id}_{i}" for i in range(len(chunks))]
+        
+        documents = [chunk["text"] for chunk in chunks]
+        
+        metadatas = [
+            {
+                "type": "audio",
+                "source": audio_metadata.get("source", "unknown"),
+                "audio_id": audio_id,
+                "start": str(chunk["start"]),
+                "end": str(chunk["end"])
+            }
+            for chunk in chunks
+        ]
+        
+        self.audio_collection.add(
+            ids=ids,
+            embeddings=embeddings.tolist(),
+            documents=documents,
+            metadatas=metadatas
+        )
+        
+        logger.info(f"Added {len(chunks)} audio chunks to vector store")
+    
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        collection_type: str = "text",
+        n_results: int = 10,
+        where: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Search vector store
+        
+        Args:
+            query_embedding: Query embedding vector
+            collection_type: "text", "image", or "audio"
+            n_results: Number of results to return
+            where: Metadata filters
+            
+        Returns:
+            Search results
+        """
+        # Select collection
+        if collection_type == "text":
+            collection = self.text_collection
+        elif collection_type == "image":
+            collection = self.image_collection
+        elif collection_type == "audio":
+            collection = self.audio_collection
+        else:
+            raise ValueError(f"Unknown collection type: {collection_type}")
+        
+        # Perform search
+        results = collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=n_results,
+            where=where
+        )
+        
+        return results
+    
+    def search_all(
+        self,
+        query_embedding: np.ndarray,
+        n_results_per_type: int = 10
+    ) -> Dict:
+        """
+        Search across all collections
+        
+        Args:
+            query_embedding: Query embedding
+            n_results_per_type: Results per collection
+            
+        Returns:
+            Combined results from all collections
+        """
+        results = {
+            "text": self.search(query_embedding, "text", n_results_per_type),
+            "image": self.search(query_embedding, "image", n_results_per_type),
+            "audio": self.search(query_embedding, "audio", n_results_per_type)
+        }
+        
+        return results
+    
+    def delete_by_source(self, source: str, collection_type: str = None):
+        """Delete all entries from a specific source"""
+        collections = []
+        
+        if collection_type:
+            if collection_type == "text":
+                collections = [self.text_collection]
+            elif collection_type == "image":
+                collections = [self.image_collection]
+            elif collection_type == "audio":
+                collections = [self.audio_collection]
+        else:
+            collections = [self.text_collection, self.image_collection, self.audio_collection]
+        
+        for collection in collections:
+            try:
+                collection.delete(where={"source": source})
+                logger.info(f"Deleted entries from {source} in {collection.name}")
+            except Exception as e:
+                logger.error(f"Error deleting from {collection.name}: {e}")
+    
+    def get_stats(self) -> Dict:
+        """Get statistics about the vector store"""
+        return {
+            "text_count": self.text_collection.count(),
+            "image_count": self.image_collection.count(),
+            "audio_count": self.audio_collection.count(),
+            "total_count": (
+                self.text_collection.count() +
+                self.image_collection.count() +
+                self.audio_collection.count()
+            )
+        }
+    
+    def persist(self):
+        """Persist the database to disk"""
+        self.client.persist()
+        logger.info("Vector store persisted to disk")

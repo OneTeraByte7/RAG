@@ -1,0 +1,57 @@
+2025-09-30 12:19:50.008 | INFO     | __main__:run_api_server:22 - Starting API server on 0.0.0.0:8000
+2025-09-30 12:22:38.058 | ERROR    | __main__:main:225 - Fatal error: Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-09-30 12:33:39.384 | INFO     | __main__:run_api_server:22 - Starting API server on 0.0.0.0:8000
+2025-09-30 12:34:05.031 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 12:34:05.035 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 12:34:10.947 | ERROR    | api.main:startup_event:93 - Error during startup: nomic-ai/nomic-bert-2048 You can inspect the repository content at https://hf.co/nomic-ai/nomic-embed-text-v1.5.
+Please pass the argument `trust_remote_code=True` to allow custom code to be run.
+2025-09-30 12:35:35.796 | INFO     | __main__:run_api_server:22 - Starting API server on 0.0.0.0:8000
+2025-09-30 12:35:45.091 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 12:35:45.092 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 12:35:51.156 | ERROR    | api.main:startup_event:93 - Error during startup: This modeling file requires the following packages that were not found in your environment: einops. Run `pip install einops`
+2025-09-30 12:36:57.490 | INFO     | __main__:run_api_server:22 - Starting API server on 0.0.0.0:8000
+2025-09-30 12:37:06.539 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 12:37:06.540 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 12:39:09.866 | INFO     | models.embeddings:__init__:76 - Loading CLIP model on cpu
+2025-09-30 12:40:27.633 | INFO     | models.embeddings:__init__:136 - Multimodal embedder initialized
+2025-09-30 12:40:27.633 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-09-30 12:40:28.477 | ERROR    | api.main:startup_event:93 - Error during startup: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3.
+401 Client Error. (Request ID: Root=1-68db8251-5e650a8f27c13103016c8a76;aeb55742-8b98-4057-95b0-7a8e4d6baad4)
+
+Cannot access gated repo for url https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3/resolve/main/config.json.
+Access to model mistralai/Mistral-7B-Instruct-v0.3 is restricted. You must have access to it and be authenticated to access it. Please log in.
+2025-09-30 12:49:42.423 | INFO     | __main__:run_api_server:29 - Starting API server on 0.0.0.0:8000
+2025-09-30 12:50:00.162 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 12:50:00.163 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 12:52:02.346 | INFO     | models.embeddings:__init__:76 - Loading CLIP model on cpu
+2025-09-30 12:52:05.756 | INFO     | models.embeddings:__init__:136 - Multimodal embedder initialized
+2025-09-30 12:52:05.756 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-09-30 12:52:06.739 | ERROR    | api.main:startup_event:93 - Error during startup: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3.
+401 Client Error. (Request ID: Root=1-68db850b-52793afe61e27e0711d9319f;f231b6b2-d55e-42f0-ad4b-4e9342b26a01)
+
+Cannot access gated repo for url https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3/resolve/main/config.json.
+Access to model mistralai/Mistral-7B-Instruct-v0.3 is restricted. You must have access to it and be authenticated to access it. Please log in.
+2025-09-30 13:10:38.518 | INFO     | __main__:run_api_server:29 - Starting API server on 0.0.0.0:8000
+2025-09-30 13:10:47.570 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 13:10:47.571 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 13:10:59.404 | INFO     | models.embeddings:__init__:76 - Loading CLIP model on cpu
+2025-09-30 13:11:06.998 | INFO     | models.embeddings:__init__:136 - Multimodal embedder initialized
+2025-09-30 13:11:06.999 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-09-30 13:11:07.786 | ERROR    | api.main:startup_event:93 - Error during startup: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3.
+401 Client Error. (Request ID: Root=1-68db8980-25cf05d61cbcf6514c5beada;bed09a78-5fe6-47fc-8fda-e9b7b64d8497)
+
+Cannot access gated repo for url https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3/resolve/main/config.json.
+Access to model mistralai/Mistral-7B-Instruct-v0.3 is restricted. You must have access to it and be authenticated to access it. Please log in.
+2025-09-30 13:13:50.447 | INFO     | __main__:run_api_server:29 - Starting API server on 0.0.0.0:8000
+2025-09-30 13:13:59.920 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-09-30 13:13:59.921 | INFO     | models.embeddings:__init__:31 - Loading text embedding model on cpu
+2025-09-30 13:14:11.092 | INFO     | models.embeddings:__init__:76 - Loading CLIP model on cpu
+2025-09-30 13:14:14.516 | INFO     | models.embeddings:__init__:136 - Multimodal embedder initialized
+2025-09-30 13:14:14.517 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
