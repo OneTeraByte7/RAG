@@ -12,6 +12,14 @@ from datetime import datetime
 from config.settings import settings
 
 
+def _sanitize_doc_id(doc_id: Optional[str]) -> Optional[str]:
+    """Trim and validate an optional document identifier."""
+    if doc_id is None:
+        return None
+    cleaned = doc_id.strip()
+    return cleaned or None
+
+
 class DocumentChunker:
     """Chunk documents into semantic segments"""
     
@@ -61,7 +69,7 @@ class PDFProcessor:
     def __init__(self):
         self.chunker = DocumentChunker()
         
-    def extract_text(self, pdf_path: str) -> Dict:
+    def extract_text(self, pdf_path: str, doc_id: Optional[str] = None) -> Dict:
         """
         Extract text and metadata from PDF
         
@@ -98,11 +106,12 @@ class PDFProcessor:
                             "tables": tables if tables else []
                         })
                 
-                # Generate document ID
-                doc_id = self._generate_doc_id(pdf_path)
+                # Generate document ID (allow override)
+                override_doc_id = _sanitize_doc_id(doc_id)
+                doc_id_value = override_doc_id or self._generate_doc_id(pdf_path)
                 
                 result = {
-                    "doc_id": doc_id,
+                    "doc_id": doc_id_value,
                     "source": Path(pdf_path).name,
                     "full_text": "\n\n".join(full_text),
                     "pages": pages_data,
@@ -121,7 +130,7 @@ class PDFProcessor:
             logger.error(f"Error processing PDF {pdf_path}: {e}")
             raise
     
-    def process_and_chunk(self, pdf_path: str) -> List[Dict]:
+    def process_and_chunk(self, pdf_path: str, doc_id: Optional[str] = None) -> List[Dict]:
         """
         Extract and chunk PDF content
         
@@ -129,10 +138,11 @@ class PDFProcessor:
             List of chunks ready for embedding
         """
         # Extract content
-        doc_data = self.extract_text(pdf_path)
+        doc_data = self.extract_text(pdf_path, doc_id)
         
         # Chunk by pages
         all_chunks = []
+        chunk_counter = 0
         for page in doc_data["pages"]:
             page_metadata = {
                 "doc_id": doc_data["doc_id"],
@@ -143,7 +153,10 @@ class PDFProcessor:
             
             # Chunk page text
             chunks = self.chunker.chunk_text(page["text"], page_metadata)
-            all_chunks.extend(chunks)
+            for chunk in chunks:
+                chunk["chunk_id"] = chunk_counter
+                chunk_counter += 1
+                all_chunks.append(chunk)
         
         logger.info(f"Created {len(all_chunks)} chunks from PDF")
         return all_chunks
@@ -159,7 +172,7 @@ class DOCXProcessor:
     def __init__(self):
         self.chunker = DocumentChunker()
     
-    def extract_text(self, docx_path: str) -> Dict:
+    def extract_text(self, docx_path: str, doc_id: Optional[str] = None) -> Dict:
         """
         Extract text and metadata from DOCX
         
@@ -197,11 +210,12 @@ class DOCXProcessor:
                     table_data.append(row_data)
                 tables.append(table_data)
             
-            # Generate document ID
-            doc_id = self._generate_doc_id(docx_path)
+            # Generate document ID (allow override)
+            override_doc_id = _sanitize_doc_id(doc_id)
+            doc_id_value = override_doc_id or self._generate_doc_id(docx_path)
             
             result = {
-                "doc_id": doc_id,
+                "doc_id": doc_id_value,
                 "source": Path(docx_path).name,
                 "full_text": "\n\n".join(full_text),
                 "paragraphs": paragraphs,
@@ -222,7 +236,7 @@ class DOCXProcessor:
             logger.error(f"Error processing DOCX {docx_path}: {e}")
             raise
     
-    def process_and_chunk(self, docx_path: str) -> List[Dict]:
+    def process_and_chunk(self, docx_path: str, doc_id: Optional[str] = None) -> List[Dict]:
         """
         Extract and chunk DOCX content
         
@@ -230,9 +244,10 @@ class DOCXProcessor:
             List of chunks ready for embedding
         """
         # Extract content
-        doc_data = self.extract_text(docx_path)
+        doc_data = self.extract_text(docx_path, doc_id)
         
         # Chunk paragraphs
+        chunk_counter = 0
         metadata = {
             "doc_id": doc_data["doc_id"],
             "source": doc_data["source"],
@@ -240,6 +255,9 @@ class DOCXProcessor:
         }
         
         chunks = self.chunker.chunk_text(doc_data["full_text"], metadata)
+        for chunk in chunks:
+            chunk["chunk_id"] = chunk_counter
+            chunk_counter += 1
         
         logger.info(f"Created {len(chunks)} chunks from DOCX")
         return chunks
@@ -256,7 +274,7 @@ class DocumentProcessor:
         self.pdf_processor = PDFProcessor()
         self.docx_processor = DOCXProcessor()
     
-    def process_document(self, file_path: str) -> List[Dict]:
+    def process_document(self, file_path: str, doc_id: Optional[str] = None) -> List[Dict]:
         """
         Process document based on file type
         
@@ -267,10 +285,19 @@ class DocumentProcessor:
             List of chunks
         """
         file_path = Path(file_path)
-        
+        doc_id_override = _sanitize_doc_id(doc_id)
+
         if file_path.suffix.lower() == '.pdf':
-            return self.pdf_processor.process_and_chunk(str(file_path))
+            chunks = self.pdf_processor.process_and_chunk(str(file_path), doc_id_override)
         elif file_path.suffix.lower() in ['.docx', '.doc']:
-            return self.docx_processor.process_and_chunk(str(file_path))
+            chunks = self.docx_processor.process_and_chunk(str(file_path), doc_id_override)
         else:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
+
+        # Ensure every chunk has consistent doc_id metadata
+        if doc_id_override:
+            for chunk in chunks:
+                chunk.setdefault("metadata", {})
+                chunk["metadata"]["doc_id"] = doc_id_override
+
+        return chunks

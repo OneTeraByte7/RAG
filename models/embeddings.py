@@ -9,18 +9,7 @@ from loguru import logger
 import clip
 from PIL import Image
 
-import sys
-import os
-config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config'))
-if config_dir not in sys.path:
-    sys.path.insert(0, config_dir)
-try:
-    from config.settings import settings
-except ImportError:
-    try:
-        from config.settings import settings
-    except ImportError as e:
-        raise ImportError("Could not import 'settings'. Check your config directory and PYTHONPATH.") from e
+from config.settings import settings
 
 
 class TextEmbedder:
@@ -31,10 +20,11 @@ class TextEmbedder:
         logger.info(f"Loading text embedding model on {self.device}")
         
         self.model = SentenceTransformer(
-    settings.EMBEDDING_MODEL,
-    device=self.device,
-    trust_remote_code=True  # Add this line
-)
+            settings.EMBEDDING_MODEL,
+            device=self.device,
+            trust_remote_code=True
+        )
+
         self.dimension = settings.EMBEDDING_DIMENSION
         
     def embed_text(self, texts: Union[str, List[str]]) -> np.ndarray:

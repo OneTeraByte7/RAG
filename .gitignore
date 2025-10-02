@@ -4,3 +4,8 @@ __pycache__/
 .env
 models_cache/
 data/
+models_cache/
+database/
+uploads/
+.venv/
+models/

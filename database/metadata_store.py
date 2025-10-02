@@ -65,12 +65,11 @@ class MetadataStore:
     def __init__(self):
         logger.info("Initializing metadata store")
         
-        # Create engine
+        # Use SQLite instead of PostgreSQL
+        db_path = settings.DATA_DIR / "metadata.db"
         self.engine = create_engine(
-            settings.database_url,
-            echo=settings.DEBUG,
-            pool_size=10,
-            max_overflow=20
+            f"sqlite:///{db_path}",
+            echo=settings.DEBUG
         )
         
         # Create tables
@@ -94,21 +93,40 @@ class MetadataStore:
         """
         session = self.get_session()
         try:
-            doc = Document(
-                id=doc_data["doc_id"],
-                source=doc_data["source"],
-                file_path=doc_data.get("file_path", ""),
-                doc_type=doc_data["type"],
-                file_size=doc_data.get("metadata", {}).get("file_size"),
-                num_pages=doc_data.get("total_pages") or doc_data.get("metadata", {}).get("num_paragraphs"),
-                duration=doc_data.get("duration"),
-                metadata_json=doc_data.get("metadata", {}),
-                is_indexed=False
-            )
-            
-            session.add(doc)
+            now = datetime.now()
+            existing = session.query(Document).filter(Document.id == doc_data["doc_id"]).first()
+
+            if existing:
+                existing.source = doc_data["source"]
+                existing.file_path = doc_data.get("file_path", "")
+                existing.doc_type = doc_data["type"]
+                existing.file_size = doc_data.get("metadata", {}).get("file_size")
+                existing.num_pages = (
+                    doc_data.get("total_pages") or
+                    doc_data.get("metadata", {}).get("num_paragraphs")
+                )
+                existing.duration = doc_data.get("duration")
+                existing.metadata_json = doc_data.get("metadata", {})
+                existing.processed_at = now
+                existing.is_indexed = False
+                logger.info(f"Updated existing document metadata: {doc_data['doc_id']}")
+            else:
+                doc = Document(
+                    id=doc_data["doc_id"],
+                    source=doc_data["source"],
+                    file_path=doc_data.get("file_path", ""),
+                    doc_type=doc_data["type"],
+                    file_size=doc_data.get("metadata", {}).get("file_size"),
+                    num_pages=doc_data.get("total_pages") or doc_data.get("metadata", {}).get("num_paragraphs"),
+                    duration=doc_data.get("duration"),
+                    metadata_json=doc_data.get("metadata", {}),
+                    processed_at=now,
+                    is_indexed=False
+                )
+                
+                session.add(doc)
             session.commit()
-            logger.info(f"Added document metadata: {doc_data['doc_id']}")
+            logger.info(f"Document metadata stored: {doc_data['doc_id']}")
             
         except Exception as e:
             session.rollback()
@@ -142,6 +160,10 @@ class MetadataStore:
         """
         session = self.get_session()
         try:
+            deleted = session.query(Chunk).filter(Chunk.doc_id == doc_id).delete(synchronize_session=False)
+            if deleted:
+                logger.info(f"Removed {deleted} existing chunks for document {doc_id}")
+
             chunk_objs = []
             for chunk in chunks:
                 chunk_obj = Chunk(
@@ -164,6 +186,22 @@ class MetadataStore:
         except Exception as e:
             session.rollback()
             logger.error(f"Error adding chunks: {e}")
+            raise
+        finally:
+            session.close()
+
+    def delete_document(self, doc_id: str) -> Dict[str, int]:
+        """Delete a document and its chunks from the metadata store."""
+        session = self.get_session()
+        try:
+            chunk_count = session.query(Chunk).filter(Chunk.doc_id == doc_id).delete(synchronize_session=False)
+            doc_count = session.query(Document).filter(Document.id == doc_id).delete(synchronize_session=False)
+            session.commit()
+            logger.info(f"Deleted document {doc_id} (doc rows: {doc_count}, chunks: {chunk_count})")
+            return {"documents": doc_count, "chunks": chunk_count}
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error deleting document {doc_id}: {e}")
             raise
         finally:
             session.close()

@@ -30,15 +30,17 @@ class LLMGenerator:
         # Load model and tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             settings.LLM_MODEL,
-            trust_remote_code=True
+            trust_remote_code=True,
+            cache_dir=str(settings.MODELS_DIR)  # Add this line
         )
-        
+
         self.model = AutoModelForCausalLM.from_pretrained(
             settings.LLM_MODEL,
             quantization_config=quantization_config,
             device_map="auto" if self.device == "cuda" else None,
             trust_remote_code=True,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            cache_dir=str(settings.MODELS_DIR)  # Add this line
         )
         
         self.model.eval()

@@ -2,8 +2,7 @@
 Vector database for semantic search using ChromaDB
 """
 import chromadb
-from chromadb.config import Settings
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional
 import numpy as np
 from loguru import logger
 from pathlib import Path
@@ -13,24 +12,20 @@ from config.settings import settings
 
 class VectorStore:
     """ChromaDB vector store for multimodal embeddings"""
-    
+
     def __init__(self, persist_directory: str = None):
         self.persist_directory = persist_directory or str(settings.VECTOR_DB_DIR)
-        
+
         logger.info(f"Initializing ChromaDB at {self.persist_directory}")
-        
-        # Initialize ChromaDB client
-        self.client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=self.persist_directory,
-            anonymized_telemetry=False
-        ))
-        
+
+        # Use new Chroma PersistentClient API
+        self.client = chromadb.PersistentClient(path=self.persist_directory)
+
         # Create or get collections
         self.text_collection = self._get_or_create_collection("text_chunks")
         self.image_collection = self._get_or_create_collection("image_embeddings")
         self.audio_collection = self._get_or_create_collection("audio_transcripts")
-        
+
         logger.info("Vector store initialized")
     
     def _get_or_create_collection(self, name: str):
@@ -47,6 +42,30 @@ class VectorStore:
         
         return collection
     
+    def _delete_text_chunks_by_doc_id(self, doc_id: str) -> int:
+        """Remove existing text chunks for a document before re-inserting."""
+        if not doc_id or doc_id == "unknown":
+            return 0
+
+        try:
+            deleted = self.text_collection.delete(where={"doc_id": doc_id})
+            if isinstance(deleted, dict):
+                count = len(deleted.get("ids", []))
+            else:
+                count = deleted if isinstance(deleted, int) else 0
+
+            if count:
+                logger.info(
+                    f"Removed {count} existing text chunks for document {doc_id}"
+                )
+            return count
+        except Exception as e:
+            logger.warning(
+                f"Failed to prune existing text chunks for {doc_id}: {e}"
+            )
+
+        return 0
+
     def add_text_chunks(
         self,
         chunks: List[Dict],
@@ -62,8 +81,24 @@ class VectorStore:
         if len(chunks) == 0:
             return
         
-        ids = [f"text_{chunk['metadata'].get('doc_id', 'unknown')}_{chunk['chunk_id']}" 
-               for chunk in chunks]
+        # Ensure we do not insert duplicate IDs for re-processed documents
+        doc_ids = set()
+        for chunk in chunks:
+            metadata = chunk.setdefault("metadata", {})
+            doc_id = metadata.get("doc_id")
+            if doc_id:
+                doc_ids.add(doc_id)
+
+        if not doc_ids:
+            logger.warning("No doc_id metadata found in chunks; skipping pre-delete step")
+        else:
+            for doc_id in doc_ids:
+                self._delete_text_chunks_by_doc_id(doc_id)
+
+        ids = [
+            f"text_{chunk['metadata'].get('doc_id', 'unknown')}_{chunk['chunk_id']}"
+            for chunk in chunks
+        ]
         
         texts = [chunk["text"] for chunk in chunks]
         
@@ -230,9 +265,10 @@ class VectorStore:
         
         return results
     
-    def delete_by_source(self, source: str, collection_type: str = None):
-        """Delete all entries from a specific source"""
+    def delete_by_source(self, source: str, collection_type: str = None) -> int:
+        """Delete all entries from a specific source and return the count removed."""
         collections = []
+        total_deleted = 0
         
         if collection_type:
             if collection_type == "text":
@@ -246,10 +282,17 @@ class VectorStore:
         
         for collection in collections:
             try:
-                collection.delete(where={"source": source})
-                logger.info(f"Deleted entries from {source} in {collection.name}")
+                # Get all IDs with this source first
+                results = collection.get(where={"source": source})
+                if results['ids']:
+                    total_deleted += len(results['ids'])
+                    # Delete by IDs instead of where clause
+                    collection.delete(ids=results['ids'])
+                    logger.info(f"Deleted {len(results['ids'])} entries from {source} in {collection.name}")
             except Exception as e:
                 logger.error(f"Error deleting from {collection.name}: {e}")
+
+        return total_deleted
     
     def get_stats(self) -> Dict:
         """Get statistics about the vector store"""

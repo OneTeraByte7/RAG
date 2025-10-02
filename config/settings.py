@@ -4,6 +4,7 @@ Configuration settings for the Multimodal RAG System
 from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -19,17 +20,17 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     API_PREFIX: str = "/api/v1"
     
-    # Paths
-    BASE_DIR: Path = Path(__file__).parent.parent
+    # Paths - CHANGED TO F: DRIVE
+    BASE_DIR: Path = Path("F:/Smart India Hackathon_2025/SIH25231")
     DATA_DIR: Path = BASE_DIR / "data"
     UPLOAD_DIR: Path = DATA_DIR / "uploads"
-    MODELS_DIR: Path = DATA_DIR / "models"
+    MODELS_DIR: Path = BASE_DIR / "models"  # Models will be stored here
     VECTOR_DB_DIR: Path = DATA_DIR / "vector_db"
     
     # Model Settings
     EMBEDDING_MODEL: str = "nomic-ai/nomic-embed-text-v1.5"
     EMBEDDING_DIMENSION: int = 768
-    LLM_MODEL: str = "microsoft/phi-2"
+    LLM_MODEL: str = "microsoft/phi-1_5"
     WHISPER_MODEL: str = "large-v3"
     CLIP_MODEL: str = "ViT-B/32"
     
@@ -92,8 +93,15 @@ class Settings(BaseSettings):
         for dir_path in [self.DATA_DIR, self.UPLOAD_DIR, self.MODELS_DIR, 
                          self.VECTOR_DB_DIR, self.LOG_FILE.parent]:
             dir_path.mkdir(parents=True, exist_ok=True)
+    
+    def setup_cache_env(self):
+        """Set environment variables for model cache"""
+        os.environ['HF_HOME'] = str(self.MODELS_DIR)
+        os.environ['TRANSFORMERS_CACHE'] = str(self.MODELS_DIR)
+        os.environ['HF_DATASETS_CACHE'] = str(self.MODELS_DIR)
 
 
 # Global settings instance
 settings = Settings()
 settings.create_directories()
+settings.setup_cache_env()  # Set cache location

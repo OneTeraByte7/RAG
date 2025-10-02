@@ -119,12 +119,7 @@ class HybridSearchEngine:
         logger.info("Hybrid search engine initialized")
     
     def build_bm25_index(self, collection_type: str = "text"):
-        """
-        Build BM25 index for a collection
-        
-        Args:
-            collection_type: "text", "image", or "audio"
-        """
+        """Build BM25 index for a collection"""
         logger.info(f"Building BM25 index for {collection_type}")
         
         # Get collection
@@ -142,6 +137,7 @@ class HybridSearchEngine:
         
         if not results['ids']:
             logger.warning(f"No documents found in {collection_type} collection")
+            self.bm25_indices[collection_type] = None  # Set to None explicitly
             return
         
         # Build BM25 index
@@ -150,7 +146,7 @@ class HybridSearchEngine:
         self.bm25_indices[collection_type] = bm25
         
         logger.info(f"BM25 index built for {collection_type}: {len(results['ids'])} docs")
-    
+        
     def semantic_search(
         self,
         query: str,
@@ -198,14 +194,6 @@ class HybridSearchEngine:
     ) -> List[Dict]:
         """
         Keyword search using BM25
-        
-        Args:
-            query: Query string
-            collection_type: Collection to search
-            top_k: Number of results
-            
-        Returns:
-            List of results
         """
         bm25 = self.bm25_indices.get(collection_type)
         
@@ -213,6 +201,11 @@ class HybridSearchEngine:
             logger.warning(f"BM25 index not built for {collection_type}, building now...")
             self.build_bm25_index(collection_type)
             bm25 = self.bm25_indices[collection_type]
+        
+        # Add this safety check
+        if bm25 is None:
+            logger.warning(f"No documents in {collection_type} collection for keyword search")
+            return []
         
         return bm25.search(query, top_k)
     

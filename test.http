@@ -1,0 +1,230 @@
+### Health Check
+GET http://localhost:8000/
+
+### Get Stats
+GET http://localhost:8000/stats
+
+###############################################
+# DOCUMENT MANAGEMENT
+###############################################
+
+### Delete Specific Document BEFORE Re-uploading (IMPORTANT!)
+DELETE http://localhost:8000/docs/yes.pdf
+
+### Upload PDF Document with Custom ID
+POST http://localhost:8000/upload/document
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_id"
+
+yes-pdf-doc
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="yes.pdf"
+Content-Type: application/pdf
+
+< ./docs/yes.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Upload PDF Document without Custom ID (auto-generated)
+POST http://localhost:8000/upload/document
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="yes.pdf"
+Content-Type: application/pdf
+
+< ./docs/yes.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###############################################
+# IMAGE MANAGEMENT
+###############################################
+
+### Upload Image
+POST http://localhost:8000/upload/image
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="image.png"
+Content-Type: image/png
+
+< ./docs/image.png
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###############################################
+# AUDIO MANAGEMENT (if you have audio files)
+###############################################
+
+### Upload Audio File
+# POST http://localhost:8000/upload/audio
+# Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+# 
+# ------WebKitFormBoundary7MA4YWxkTrZu0gW
+# Content-Disposition: form-data; name="file"; filename="audio.mp3"
+# Content-Type: audio/mpeg
+# 
+# < ./docs/audio.mp3
+# ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###############################################
+# QUERYING
+###############################################
+
+### Query System - Hybrid Search (Default)
+POST http://localhost:8000/query
+Content-Type: application/json
+
+{
+  "query": "What topics are covered in this document?",
+  "top_k": 10,
+  "search_type": "hybrid"
+}
+
+### Query System - Semantic Search
+POST http://localhost:8000/query
+Content-Type: application/json
+
+{
+  "query": "Explain the main concepts",
+  "top_k": 5,
+  "search_type": "semantic"
+}
+
+### Query System - Keyword Search
+POST http://localhost:8000/query
+Content-Type: application/json
+
+{
+  "query": "cloud computing benefits",
+  "top_k": 10,
+  "search_type": "keyword"
+}
+
+###############################################
+# DOCUMENT LISTING & RETRIEVAL
+###############################################
+
+### List All Documents
+GET http://localhost:8000/documents
+
+### List PDFs Only
+GET http://localhost:8000/documents?doc_type=pdf
+
+### List Images Only
+GET http://localhost:8000/documents?doc_type=image
+
+### List Audio Files Only
+GET http://localhost:8000/documents?doc_type=audio
+
+### Get Specific Document Details
+GET http://localhost:8000/documents/yes-pdf-doc
+
+###############################################
+# DELETION ENDPOINTS (USE WITH CAUTION)
+###############################################
+
+### Delete Specific Document by ID
+DELETE http://localhost:8000/documents/yes-pdf-doc
+
+### Delete ALL Documents (DANGER: Nuclear Option!)
+### Uncomment the line below to use
+# DELETE http://localhost:8000/documents
+
+###############################################
+# RECOMMENDED WORKFLOWS
+###############################################
+
+# ========================================
+# WORKFLOW 1: First Time Upload
+# ========================================
+# Step 1: Upload document with custom ID
+# POST /upload/document (with document_id in form data)
+#
+# Step 2: Verify upload
+# GET /stats
+#
+# Step 3: Test retrieval
+# POST /query
+
+# ========================================
+# WORKFLOW 2: Re-uploading Same Document
+# ========================================
+# Step 1: Delete old version first (IMPORTANT!)
+# DELETE /documents/yes-pdf-doc
+#
+# Step 2: Upload new version with same ID
+# POST /upload/document (with document_id: yes-pdf-doc)
+#
+# Step 3: Verify
+# GET /documents/yes-pdf-doc
+
+# ========================================
+# WORKFLOW 3: Batch Upload Multiple Files
+# ========================================
+# Step 1: Upload PDF 1
+# POST /upload/document (document_id: doc-1)
+#
+# Step 2: Upload PDF 2
+# POST /upload/document (document_id: doc-2)
+#
+# Step 3: Upload Images
+# POST /upload/image (filename: image1.png)
+# POST /upload/image (filename: image2.png)
+#
+# Step 4: List all documents
+# GET /documents
+
+# ========================================
+# WORKFLOW 4: Complete System Reset
+# ========================================
+# Step 1: Delete all documents
+# DELETE /documents
+#
+# Step 2: Verify deletion
+# GET /stats
+#
+# Step 3: Upload fresh documents
+# POST /upload/document
+# POST /upload/image
+
+###############################################
+# TROUBLESHOOTING
+###############################################
+
+# ERROR: "Expected IDs to be unique, found duplicates"
+# SOLUTION: Delete the existing document first
+# DELETE http://localhost:8000/documents/{document_id}
+# Then re-upload
+
+# ERROR: Document not found (404)
+# SOLUTION: Check document ID
+# GET http://localhost:8000/documents
+
+# ERROR: No results in query
+# SOLUTION: Verify documents are indexed
+# GET http://localhost:8000/stats
+
+###############################################
+# NOTES
+###############################################
+
+# 1. DOCUMENT IDs:
+#    - If you provide document_id in upload, it will use that
+#    - If not provided, it will auto-generate based on filename
+#    - Always use unique IDs for different documents
+#    - Example IDs: "yes-pdf-doc", "meeting-notes-oct-2", "report-v1"
+
+# 2. RE-UPLOADING:
+#    - ALWAYS delete the old version first to avoid duplicate errors
+#    - The API now has automatic conflict detection
+#    - If document exists, you'll get a 409 Conflict error
+
+# 3. SEARCH TYPES:
+#    - "hybrid": Combines semantic + keyword (best for most cases)
+#    - "semantic": Pure vector similarity (for conceptual queries)
+#    - "keyword": BM25 keyword matching (for exact terms)
+
+# 4. FILE LOCATIONS:
+#    - Make sure files are in ./docs/ relative to where you run the requests
+#    - Or use absolute paths: C:/path/to/your/docs/file.pdf

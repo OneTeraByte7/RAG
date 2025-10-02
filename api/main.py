@@ -1,7 +1,7 @@
 """
 FastAPI application for Multimodal RAG System
 """
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -117,7 +117,10 @@ async def get_stats():
 
 
 @app.post("/upload/document")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    document_id: Optional[str] = Form(None)
+):
     """
     Upload and process a document (PDF or DOCX)
     """
@@ -131,12 +134,34 @@ async def upload_document(file: UploadFile = File(...)):
         
         logger.info(f"Processing document: {file.filename}")
         
-        # Process document
+        # Process document with custom document_id if provided
         doc_processor = DocumentProcessor()
-        chunks = doc_processor.process_document(str(file_path))
+        doc_id_override = document_id.strip() if document_id and document_id.strip() else None
+        chunks = doc_processor.process_document(
+            str(file_path),
+            doc_id=doc_id_override
+        )
         
         if not chunks:
             raise HTTPException(status_code=400, detail="No content extracted from document")
+
+        doc_id = chunks[0]["metadata"].get("doc_id") if chunks[0].get("metadata") else None
+        if not doc_id:
+            raise HTTPException(status_code=500, detail="Document processor returned chunks without doc_id metadata")
+
+        if doc_id_override and doc_id != doc_id_override:
+            logger.warning(
+                "Document processor returned doc_id '{}' different from override '{}'",
+                doc_id,
+                doc_id_override
+            )
+            doc_id = doc_id_override
+
+        # Check if document with this ID already exists
+        existing_doc = metadata_store.get_document(doc_id)
+
+        filename_lower = file.filename.lower()
+        doc_type = "pdf" if filename_lower.endswith('.pdf') else "docx"
         
         # Generate embeddings
         chunk_texts = [chunk["text"] for chunk in chunks]
@@ -146,13 +171,17 @@ async def upload_document(file: UploadFile = File(...)):
         vector_store.add_text_chunks(chunks, embeddings)
         
         # Store metadata
-        doc_id = chunks[0]["metadata"]["doc_id"]
+        doc_metadata = {
+            "num_chunks": len(chunks),
+            "file_size": file_path.stat().st_size if file_path.exists() else None,
+            "doc_type": doc_type
+        }
         metadata_store.add_document({
             "doc_id": doc_id,
             "source": file.filename,
             "file_path": str(file_path),
-            "type": "pdf" if file.filename.endswith('.pdf') else "docx",
-            "metadata": {"num_chunks": len(chunks)}
+            "type": doc_type,
+            "metadata": doc_metadata
         })
         metadata_store.add_chunks(chunks, doc_id)
         metadata_store.update_document_indexed(doc_id, True)
@@ -161,15 +190,18 @@ async def upload_document(file: UploadFile = File(...)):
         search_engine.build_bm25_index("text")
         
         processing_time = (time.time() - start_time) * 1000
+        action = "updated" if existing_doc else "processed"
         
         return DocumentUploadResponse(
             success=True,
             doc_id=doc_id,
             source=file.filename,
             num_chunks=len(chunks),
-            message=f"Document processed successfully in {processing_time:.2f}ms"
+            message=f"Document {action} successfully in {processing_time:.2f}ms"
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error uploading document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -193,6 +225,15 @@ async def upload_image(file: UploadFile = File(...)):
         # Process image
         img_processor = ImageProcessor()
         image_data = img_processor.process_and_prepare(str(file_path))
+        
+        # Check if image already exists
+        existing_doc = metadata_store.get_document(image_data["id"])
+        if existing_doc:
+            logger.warning(f"Image {image_data['id']} already exists. Deleting old version first.")
+            try:
+                await delete_document_by_id(image_data["id"])
+            except Exception as e:
+                logger.error(f"Failed to delete existing image: {e}")
         
         # Generate embeddings
         # Visual embedding
@@ -251,6 +292,15 @@ async def upload_audio(file: UploadFile = File(...)):
         # Generate audio ID
         import hashlib
         audio_id = hashlib.md5(file.filename.encode()).hexdigest()[:16]
+        
+        # Check if audio already exists
+        existing_doc = metadata_store.get_document(audio_id)
+        if existing_doc:
+            logger.warning(f"Audio {audio_id} already exists. Deleting old version first.")
+            try:
+                await delete_document_by_id(audio_id)
+            except Exception as e:
+                logger.error(f"Failed to delete existing audio: {e}")
         
         # Generate embeddings for chunks
         chunk_texts = [chunk["text"] for chunk in audio_data["chunks"]]
@@ -384,25 +434,154 @@ async def list_documents(doc_type: Optional[str] = Query(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/document/{doc_id}")
-async def delete_document(doc_id: str):
-    """Delete a document and its chunks"""
+@app.get("/documents/{doc_id}")
+async def get_document_details(doc_id: str):
+    """Get details of a specific document"""
     try:
-        # Get document info
         doc = metadata_store.get_document(doc_id)
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
         
-        # Delete from vector store
-        vector_store.delete_by_source(doc["source"])
+        doc_type = doc.get("doc_type", "text")
+        chunk_count = 0
+
+        try:
+            if doc_type in {"pdf", "docx", "text"}:
+                results = vector_store.text_collection.get(where={"doc_id": doc_id})
+                chunk_count = len(results.get("ids", [])) if results else 0
+            elif doc_type == "image":
+                results = vector_store.image_collection.get(where={"image_id": doc_id})
+                chunk_count = len(results.get("ids", [])) if results else 0
+            elif doc_type == "audio":
+                results = vector_store.audio_collection.get(where={"audio_id": doc_id})
+                chunk_count = len(results.get("ids", [])) if results else 0
+        except Exception as e:
+            logger.warning(f"Unable to fetch chunk count for document {doc_id}: {e}")
+
+        doc["chunk_count"] = chunk_count
         
-        # TODO: Delete from metadata store (add method)
+        return doc
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def delete_document_by_id(doc_id: str, doc: Optional[Dict] = None) -> Dict[str, int]:
+    """Helper function to delete a document by ID."""
+    doc_info = doc or metadata_store.get_document(doc_id)
+    if not doc_info:
+        return {"vectors": 0, "chunks": 0}
+
+    try:
+        vectors_deleted = vector_store.delete_by_source(doc_info["source"])
+    except Exception as e:
+        logger.error(f"Error deleting vectors for document {doc_id}: {e}")
+        raise
+
+    metadata_stats = {"documents": 0, "chunks": 0}
+    try:
+        metadata_stats = metadata_store.delete_document(doc_id)
+    except Exception as e:
+        logger.warning(f"Could not delete metadata for document {doc_id}: {e}")
+    
+    try:
+        vector_store.persist()
+    except Exception as e:
+        logger.warning(f"Failed to persist vector store after deleting {doc_id}: {e}")
+
+    return {
+        "vectors": vectors_deleted,
+        "chunks": metadata_stats.get("chunks", 0)
+    }
+
+
+@app.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str):
+    """Delete a document and all its chunks"""
+    try:
+        # Get document info first
+        doc = metadata_store.get_document(doc_id)
+        if not doc:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
         
-        return {"success": True, "message": f"Document {doc_id} deleted"}
+        # Delete the document
+        delete_stats = await delete_document_by_id(doc_id, doc)
+        vectors_deleted = delete_stats.get("vectors", 0)
+        metadata_chunks_deleted = delete_stats.get("chunks", 0)
+        
+        # Rebuild BM25 index
+        doc_type = doc.get("doc_type", "text")
+        if doc_type in ["pdf", "docx", "text"]:
+            search_engine.build_bm25_index("text")
+        elif doc_type == "image":
+            search_engine.build_bm25_index("image")
+        elif doc_type == "audio":
+            search_engine.build_bm25_index("audio")
+        
+        return {
+            "success": True,
+            "message": f"Document {doc_id} deleted successfully",
+            "vector_entries_deleted": vectors_deleted,
+            "metadata_chunks_deleted": metadata_chunks_deleted
+        }
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error deleting document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/documents")
+async def delete_all_documents():
+    """Delete all documents from the system (use with caution!)"""
+    try:
+        # Get all documents
+        all_docs = metadata_store.get_all_documents()
+        
+        if not all_docs:
+            return {
+                "success": True,
+                "message": "No documents to delete",
+                "documents_deleted": 0
+            }
+        
+        total_vectors = 0
+        total_metadata_chunks = 0
+        doc_types_to_reindex = set()
+        # Delete each document
+        for doc in all_docs:
+            try:
+                delete_stats = await delete_document_by_id(doc["id"], doc)
+                total_vectors += delete_stats.get("vectors", 0)
+                total_metadata_chunks += delete_stats.get("chunks", 0)
+                doc_types_to_reindex.add(doc.get("doc_type", "text"))
+            except Exception as e:
+                logger.error(f"Error deleting document {doc['id']}: {e}")
+        
+        # Rebuild all BM25 indices
+        try:
+            if any(dt in {"pdf", "docx", "text"} for dt in doc_types_to_reindex):
+                search_engine.build_bm25_index("text")
+            if "image" in doc_types_to_reindex:
+                search_engine.build_bm25_index("image")
+            if "audio" in doc_types_to_reindex:
+                search_engine.build_bm25_index("audio")
+        except Exception as e:
+            logger.warning(f"Error rebuilding BM25 indices: {e}")
+        
+        return {
+            "success": True,
+            "message": "All documents deleted successfully",
+            "documents_deleted": len(all_docs),
+            "vector_entries_deleted": total_vectors,
+            "metadata_chunks_deleted": total_metadata_chunks
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting all documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
