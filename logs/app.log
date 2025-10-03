@@ -708,3 +708,675 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2025-10-02 20:40:37.653 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
 2025-10-02 20:40:37.656 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in image collection
 2025-10-02 20:40:37.657 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in image collection for keyword search
+2025-10-02 20:55:38.265 | INFO     | __main__:run_api_server:29 - Starting API server on 0.0.0.0:8000
+2025-10-02 20:56:12.351 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-02 20:56:12.352 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-02 20:56:27.995 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-02 20:56:36.308 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-02 20:56:36.309 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-02 20:56:51.119 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-02 20:56:51.126 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-02 20:56:52.635 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-02 20:56:52.639 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-02 20:56:52.641 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-02 20:56:52.642 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-02 20:56:52.643 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-02 20:56:52.798 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-02 20:56:52.799 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-02 20:56:52.859 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-02 20:56:52.861 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-02 20:56:52.863 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-02 20:56:52.863 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-02 20:56:52.864 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-02 20:57:09.673 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-02 20:57:19.677 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-02 20:57:19.679 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-02 20:57:19.680 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-02 21:02:07.183 | INFO     | api.main:upload_document:135 - Processing document: yes.pdf
+2025-10-02 21:02:07.186 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\yes.pdf
+2025-10-02 21:02:07.904 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-02 21:02:07.912 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-02 21:02:14.074 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-02 21:02:14.080 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: yes-pdf-doc
+2025-10-02 21:02:14.114 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: yes-pdf-doc
+2025-10-02 21:02:14.120 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document yes-pdf-doc
+2025-10-02 21:02:14.141 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document yes-pdf-doc
+2025-10-02 21:02:14.153 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document yes-pdf-doc indexed status: True
+2025-10-02 21:02:14.153 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-02 21:02:14.203 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 14 documents
+2025-10-02 21:02:14.204 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 14 docs
+2025-10-02 21:02:55.796 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-02 21:07:54.808 | INFO     | database.vector_store:delete_by_source:291 - Deleted 14 entries from yes.pdf in text_chunks
+2025-10-02 21:07:54.945 | INFO     | database.metadata_store:delete_document:200 - Deleted document yes-pdf-doc (doc rows: 1, chunks: 7)
+2025-10-02 21:07:54.953 | WARNING  | api.main:delete_document_by_id:492 - Failed to persist vector store after deleting yes-pdf-doc: 'Client' object has no attribute 'persist'
+2025-10-02 21:07:54.955 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-02 21:07:54.961 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 13:08:20.160 | INFO     | __main__:run_cli_query:128 - Starting CLI query interface
+2025-10-03 13:08:20.161 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:08:32.559 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:08:37.043 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:08:37.043 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 13:08:52.644 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 13:08:52.675 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:08:54.199 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:08:54.200 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:08:54.202 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:08:54.202 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:08:54.206 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:09:06.395 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:09:12.280 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:09:12.281 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 13:09:18.787 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['image', 'text', 'audio']
+2025-10-03 13:09:20.366 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 13:09:20.368 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 13:09:20.440 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 13:09:20.441 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in text collection for keyword search
+2025-10-03 13:09:36.579 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 13:09:36.673 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 13:09:36.673 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 13:09:36.675 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 13:09:36.675 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in text collection for keyword search
+2025-10-03 13:09:48.727 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 13:09:48.847 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 13:09:48.848 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 13:09:48.851 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 13:09:48.852 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in text collection for keyword search
+2025-10-03 13:16:32.772 | INFO     | __main__:run_batch_processing:48 - Batch processing directory: data/uploads
+2025-10-03 13:16:32.774 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:16:47.465 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:16:55.776 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:16:55.778 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:16:56.078 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:16:56.080 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:16:56.083 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:16:56.083 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:16:56.084 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 13:16:56.119 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 13:16:56.120 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 13:17:04.342 | INFO     | __main__:run_batch_processing:64 - Processing data\uploads\yes.pdf
+2025-10-03 13:17:04.346 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: data\uploads\yes.pdf
+2025-10-03 13:17:06.906 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 13:17:06.909 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 13:17:29.290 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 13:17:29.323 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 7c9fcfef3c1143b5
+2025-10-03 13:17:29.353 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document 7c9fcfef3c1143b5
+2025-10-03 13:17:29.373 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 7c9fcfef3c1143b5 indexed status: True
+2025-10-03 13:17:29.374 | INFO     | __main__:run_batch_processing:85 - ✅ Processed yes.pdf: 7 chunks
+2025-10-03 13:17:29.376 | INFO     | __main__:run_batch_processing:94 - Processing data\uploads\image.png
+2025-10-03 13:17:29.377 | INFO     | processing.image_processor:process_image:88 - Processing image: data\uploads\image.png
+2025-10-03 13:17:29.416 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: data\uploads\image.png
+2025-10-03 13:18:32.840 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 13:18:34.262 | INFO     | database.vector_store:add_images:163 - Added 1 images to vector store
+2025-10-03 13:18:34.301 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: ca488a09004ab57c
+2025-10-03 13:18:34.323 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document ca488a09004ab57c indexed status: True
+2025-10-03 13:18:34.324 | INFO     | __main__:run_batch_processing:112 - ✅ Processed image.png
+2025-10-03 13:18:34.327 | ERROR    | __main__:main:232 - Fatal error: 'Client' object has no attribute 'persist'
+2025-10-03 13:20:13.699 | INFO     | __main__:run_batch_processing:48 - Batch processing directory: data/uploads
+2025-10-03 13:20:13.700 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:20:25.956 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:20:30.330 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:20:30.330 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:20:30.531 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:20:30.533 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:20:30.535 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:20:30.535 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:20:30.535 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 13:20:30.552 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 13:20:30.553 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 13:20:33.873 | INFO     | __main__:run_batch_processing:64 - Processing data\uploads\yes.pdf
+2025-10-03 13:20:33.873 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: data\uploads\yes.pdf
+2025-10-03 13:20:34.782 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 13:20:34.783 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 13:20:40.352 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 13:20:40.363 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: 7c9fcfef3c1143b5
+2025-10-03 13:20:40.381 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 7c9fcfef3c1143b5
+2025-10-03 13:20:40.388 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document 7c9fcfef3c1143b5
+2025-10-03 13:20:40.413 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document 7c9fcfef3c1143b5
+2025-10-03 13:20:40.425 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 7c9fcfef3c1143b5 indexed status: True
+2025-10-03 13:20:40.426 | INFO     | __main__:run_batch_processing:85 - ✅ Processed yes.pdf: 7 chunks
+2025-10-03 13:20:40.428 | INFO     | __main__:run_batch_processing:94 - Processing data\uploads\image.png
+2025-10-03 13:20:40.429 | INFO     | processing.image_processor:process_image:88 - Processing image: data\uploads\image.png
+2025-10-03 13:20:40.444 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: data\uploads\image.png
+2025-10-03 13:20:56.380 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 13:20:56.866 | INFO     | database.vector_store:add_images:163 - Added 1 images to vector store
+2025-10-03 13:20:56.870 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: ca488a09004ab57c
+2025-10-03 13:20:56.891 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: ca488a09004ab57c
+2025-10-03 13:20:56.901 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document ca488a09004ab57c indexed status: True
+2025-10-03 13:20:56.902 | INFO     | __main__:run_batch_processing:112 - ✅ Processed image.png
+2025-10-03 13:20:56.905 | INFO     | __main__:run_batch_processing:118 - ✅ Batch processing completed
+2025-10-03 13:23:36.562 | INFO     | __main__:run_api_server:29 - Starting API server on 0.0.0.0:8000
+2025-10-03 13:23:48.126 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 13:23:48.127 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:23:57.843 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:24:01.286 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:24:01.287 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 13:24:13.402 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 13:24:13.406 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:24:14.145 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:24:14.146 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:24:14.147 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:24:14.148 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:24:14.148 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 13:24:14.264 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 13:24:14.265 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:24:14.298 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:24:14.299 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:24:14.300 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:24:14.300 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:24:14.301 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:24:24.991 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:24:29.393 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:24:29.394 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 13:24:29.395 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 13:24:32.380 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 13:24:32.961 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 13:24:32.962 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 13:24:33.006 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 7 documents
+2025-10-03 13:24:33.007 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 7 docs
+2025-10-03 13:43:32.844 | INFO     | __main__:run_cli_query:197 - Starting CLI query interface
+2025-10-03 13:43:32.850 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:43:43.740 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:43:47.719 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:43:47.720 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 13:44:00.014 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 13:44:00.022 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:44:00.910 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:44:00.910 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:44:00.911 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:44:00.911 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:44:00.911 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:44:15.746 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:44:25.525 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:44:25.526 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 13:44:25.530 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 13:44:25.778 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 13:46:25.565 | INFO     | __main__:run_cli_query:197 - Starting CLI query interface
+2025-10-03 13:46:25.567 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:46:38.161 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:46:45.455 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:46:45.457 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 13:46:57.330 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 13:46:57.335 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 13:46:58.602 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 13:46:58.604 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 13:46:58.606 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 13:46:58.606 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 13:46:58.607 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 13:47:11.115 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 13:47:15.839 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 13:47:15.840 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 13:47:15.842 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 13:47:16.036 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 14:06:34.630 | INFO     | __main__:run_cli_query:268 - Starting CLI query interface
+2025-10-03 14:06:34.631 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:06:48.963 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:06:57.478 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:06:57.479 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 14:07:12.177 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 14:07:12.194 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 14:07:13.523 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 14:07:13.526 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 14:07:13.528 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 14:07:13.528 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 14:07:13.531 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:07:25.927 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:07:31.006 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:07:31.007 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 14:07:31.008 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 14:07:31.166 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 14:10:28.656 | INFO     | __main__:run_cli_query:268 - Starting CLI query interface
+2025-10-03 14:10:28.656 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:10:40.851 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:10:44.599 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:10:44.600 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 14:11:00.386 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 14:11:00.408 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 14:11:02.268 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 14:11:02.270 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 14:11:02.272 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 14:11:02.273 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 14:11:02.274 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:11:16.513 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:11:25.463 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:11:25.465 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 14:11:25.466 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 14:11:25.677 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 14:12:23.534 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\docs\yes.pdf
+2025-10-03 14:12:24.271 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 14:12:24.275 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 14:12:30.782 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 14:12:30.867 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 6a48952fc8395cec
+2025-10-03 14:12:30.889 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document 6a48952fc8395cec
+2025-10-03 14:12:30.906 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 6a48952fc8395cec indexed status: True
+2025-10-03 14:12:30.907 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 14:12:30.964 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 21 documents
+2025-10-03 14:12:30.965 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 21 docs
+2025-10-03 14:12:52.573 | ERROR    | __main__:run_cli_query:383 - CLI ingestion failed: Only PDF, DOCX, and common audio files are supported
+2025-10-03 14:13:17.671 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 14:16:35.192 | INFO     | __main__:run_cli_query:268 - Starting CLI query interface
+2025-10-03 14:16:35.196 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:16:47.285 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:16:51.289 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:16:51.290 | INFO     | models.llm:__init__:17 - Loading LLM on cpu
+2025-10-03 14:17:05.483 | INFO     | models.llm:__init__:47 - LLM loaded successfully
+2025-10-03 14:17:05.495 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 14:17:06.689 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 14:17:06.690 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 14:17:06.691 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 14:17:06.692 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 14:17:06.693 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:17:18.586 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:17:23.707 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:17:23.708 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 14:17:23.713 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 14:17:23.908 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 14:22:22.511 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\docs\yes.pdf
+2025-10-03 14:22:23.253 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 14:22:23.256 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 14:22:29.798 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 14:22:29.880 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: 6a48952fc8395cec
+2025-10-03 14:22:29.923 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 6a48952fc8395cec
+2025-10-03 14:22:29.930 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document 6a48952fc8395cec
+2025-10-03 14:22:29.952 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document 6a48952fc8395cec
+2025-10-03 14:22:29.968 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 6a48952fc8395cec indexed status: True
+2025-10-03 14:22:29.969 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 14:22:30.037 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 21 documents
+2025-10-03 14:22:30.038 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 21 docs
+2025-10-03 14:22:43.771 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 14:38:06.773 | INFO     | __main__:run_cli_query:268 - Starting CLI query interface
+2025-10-03 14:38:06.774 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:38:18.101 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:38:21.802 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:38:21.803 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 14:38:34.527 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 14:38:34.558 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 14:38:36.559 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 14:38:36.561 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 14:38:36.563 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 14:38:36.563 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 14:38:36.565 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 14:38:47.661 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 14:38:53.001 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 14:38:53.002 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 14:38:53.004 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 14:38:53.358 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 14:39:16.488 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\docs\yes.pdf
+2025-10-03 14:39:17.419 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 14:39:17.422 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 14:39:24.613 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 14:39:24.645 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: 6a48952fc8395cec
+2025-10-03 14:39:24.663 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 6a48952fc8395cec
+2025-10-03 14:39:24.668 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document 6a48952fc8395cec
+2025-10-03 14:39:24.689 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document 6a48952fc8395cec
+2025-10-03 14:39:24.722 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 6a48952fc8395cec indexed status: True
+2025-10-03 14:39:24.724 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 14:39:24.797 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 21 documents
+2025-10-03 14:39:24.798 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 21 docs
+2025-10-03 14:39:43.268 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 14:43:47.482 | WARNING  | models.llm:generate_answer:85 - Primary LLM response failed validation; retrying with structured fallback prompt
+2025-10-03 14:43:47.905 | ERROR    | __main__:run_cli_query:510 - Error processing query: `temperature` (=0.0) has to be a strictly positive float, otherwise your next token scores will be invalid. If you're looking for greedy decoding strategies, set `do_sample=False`.
+2025-10-03 16:44:51.947 | ERROR    | api.main:startup_event:93 - Error during startup: The paging file is too small for this operation to complete. (os error 1455)
+2025-10-03 17:12:54.807 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 17:13:08.181 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 17:13:08.182 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 17:13:18.926 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 17:13:21.805 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 17:13:21.806 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 17:13:42.412 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 17:13:42.438 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 17:13:44.111 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 17:13:44.114 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 17:13:44.115 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 17:13:44.115 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 17:13:44.116 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 17:13:44.321 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 17:13:44.322 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 17:13:44.364 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 17:13:44.365 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 17:13:44.366 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 17:13:44.366 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 17:13:44.376 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 17:13:57.115 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 17:14:01.327 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 17:14:01.327 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 17:14:01.335 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 17:14:14.136 | INFO     | api.main:upload_document:135 - Processing document: yes.pdf
+2025-10-03 17:14:14.140 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\yes.pdf
+2025-10-03 17:14:14.613 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 17:14:14.627 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 17:14:20.571 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 17:14:20.588 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: yes-pdf-doc
+2025-10-03 17:14:20.596 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document yes-pdf-doc
+2025-10-03 17:14:20.606 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document yes-pdf-doc indexed status: True
+2025-10-03 17:14:20.606 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 17:14:20.664 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 28 documents
+2025-10-03 17:14:20.665 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 28 docs
+2025-10-03 17:14:29.607 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 19:38:56.371 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 19:39:14.445 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 19:39:14.445 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 19:39:27.844 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 19:39:32.307 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 19:39:32.308 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 19:39:47.698 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 19:39:47.704 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 19:39:48.656 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 19:39:48.658 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 19:39:48.660 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 19:39:48.661 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 19:39:48.662 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 19:39:48.813 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 19:39:48.813 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 19:39:48.844 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 19:39:48.845 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 19:39:48.846 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 19:39:48.846 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 19:39:48.847 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 19:40:02.060 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 19:40:07.072 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 19:40:07.073 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 19:40:07.075 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 19:40:20.282 | INFO     | api.main:upload_document:135 - Processing document: yes.pdf
+2025-10-03 19:40:20.285 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\yes.pdf
+2025-10-03 19:40:21.214 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 19:40:21.237 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 19:40:27.925 | INFO     | database.vector_store:add_text_chunks:123 - Added 7 text chunks to vector store
+2025-10-03 19:40:27.931 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: yes-pdf-doc
+2025-10-03 19:40:27.967 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: yes-pdf-doc
+2025-10-03 19:40:27.973 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document yes-pdf-doc
+2025-10-03 19:40:27.986 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document yes-pdf-doc
+2025-10-03 19:40:27.999 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document yes-pdf-doc indexed status: True
+2025-10-03 19:40:28.000 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 19:40:28.128 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 28 documents
+2025-10-03 19:40:28.129 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 28 docs
+2025-10-03 19:40:42.814 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 19:40:42.815 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 19:40:47.371 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:40:47.810 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:41:13.695 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 19:41:19.395 | INFO     | database.vector_store:add_images:163 - Added 1 images to vector store
+2025-10-03 19:41:19.480 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 1fc5a5a79dfd1782
+2025-10-03 19:41:19.536 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 1fc5a5a79dfd1782 indexed status: True
+2025-10-03 19:41:19.538 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 19:41:19.736 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 2 documents
+2025-10-03 19:41:19.737 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for image: 2 docs
+2025-10-03 19:41:39.755 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['image', 'text', 'audio']
+2025-10-03 19:41:40.564 | ERROR    | api.main:query_system:430 - Error processing query: Collection expecting embedding with dimension of 512, got 768
+2025-10-03 19:41:50.707 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 19:50:24.625 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 19:50:50.933 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 19:50:50.933 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 19:51:04.524 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 19:51:08.165 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 19:51:08.166 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 19:51:19.848 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 19:51:19.858 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 19:51:20.926 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 19:51:20.928 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 19:51:20.929 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 19:51:20.929 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 19:51:20.930 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 19:51:21.103 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 19:51:21.104 | INFO     | database.vector_store:__init__:19 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 19:51:21.148 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: text_chunks
+2025-10-03 19:51:21.150 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: image_embeddings
+2025-10-03 19:51:21.150 | INFO     | database.vector_store:_get_or_create_collection:35 - Loaded existing collection: audio_transcripts
+2025-10-03 19:51:21.151 | INFO     | database.vector_store:__init__:29 - Vector store initialized
+2025-10-03 19:51:21.152 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 19:51:35.194 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 19:51:40.587 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 19:51:40.588 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 19:51:40.590 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 19:52:04.050 | INFO     | api.main:upload_document:135 - Processing document: yes.pdf
+2025-10-03 19:52:04.053 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\yes.pdf
+2025-10-03 19:52:04.958 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 19:52:04.962 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 19:52:11.864 | INFO     | database.vector_store:add_text_chunks:126 - Added 7 text chunks to vector store
+2025-10-03 19:52:11.869 | INFO     | database.metadata_store:add_document:112 - Updated existing document metadata: dddbd85b374ed9b7
+2025-10-03 19:52:11.917 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: dddbd85b374ed9b7
+2025-10-03 19:52:11.923 | INFO     | database.metadata_store:add_chunks:165 - Removed 7 existing chunks for document dddbd85b374ed9b7
+2025-10-03 19:52:11.937 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document dddbd85b374ed9b7
+2025-10-03 19:52:11.949 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document dddbd85b374ed9b7 indexed status: True
+2025-10-03 19:52:11.950 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 19:52:12.019 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 28 documents
+2025-10-03 19:52:12.020 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 28 docs
+2025-10-03 19:52:14.411 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 19:52:14.412 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 19:52:18.983 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:52:19.026 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:52:52.538 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 19:52:52.678 | WARNING  | api.main:upload_image:232 - Image 1fc5a5a79dfd1782 already exists. Deleting old version first.
+2025-10-03 19:52:54.523 | INFO     | database.vector_store:delete_by_source:313 - Deleted 2 entries from image.png in image_embeddings
+2025-10-03 19:52:54.717 | INFO     | database.metadata_store:delete_document:200 - Deleted document 1fc5a5a79dfd1782 (doc rows: 1, chunks: 0)
+2025-10-03 19:52:58.186 | INFO     | database.vector_store:add_images:166 - Added 1 images to vector store
+2025-10-03 19:52:58.251 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 1fc5a5a79dfd1782
+2025-10-03 19:52:58.304 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 1fc5a5a79dfd1782 indexed status: True
+2025-10-03 19:52:58.305 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 19:52:58.321 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 1 documents
+2025-10-03 19:52:58.322 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for image: 1 docs
+2025-10-03 19:53:21.695 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text', 'image', 'audio']
+2025-10-03 19:53:22.650 | ERROR    | api.main:query_system:433 - Error processing query: Error executing plan: Internal error: Error creating hnsw segment reader: Nothing found on disk
+2025-10-03 19:53:29.739 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 19:53:29.867 | ERROR    | api.main:query_system:433 - Error processing query: Error executing plan: Internal error: Error creating hnsw segment reader: Nothing found on disk
+2025-10-03 19:57:34.761 | INFO     | database.vector_store:delete_by_source:313 - Deleted 28 entries from yes.pdf in text_chunks
+2025-10-03 19:57:34.776 | INFO     | database.metadata_store:delete_document:200 - Deleted document yes-pdf-doc (doc rows: 1, chunks: 7)
+2025-10-03 19:57:34.777 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 19:57:34.779 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 19:57:44.611 | INFO     | database.metadata_store:delete_document:200 - Deleted document 7c9fcfef3c1143b5 (doc rows: 1, chunks: 7)
+2025-10-03 19:57:44.723 | INFO     | database.vector_store:delete_by_source:313 - Deleted 1 entries from image.png in image_embeddings
+2025-10-03 19:57:44.735 | INFO     | database.metadata_store:delete_document:200 - Deleted document ca488a09004ab57c (doc rows: 1, chunks: 0)
+2025-10-03 19:57:44.750 | INFO     | database.metadata_store:delete_document:200 - Deleted document dddbd85b374ed9b7 (doc rows: 1, chunks: 7)
+2025-10-03 19:57:44.767 | INFO     | database.metadata_store:delete_document:200 - Deleted document 6a48952fc8395cec (doc rows: 1, chunks: 7)
+2025-10-03 19:57:44.782 | INFO     | database.metadata_store:delete_document:200 - Deleted document 1fc5a5a79dfd1782 (doc rows: 1, chunks: 0)
+2025-10-03 19:57:44.783 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 19:57:44.785 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 19:57:44.786 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 19:57:44.788 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in image collection
+2025-10-03 19:58:01.165 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 19:58:01.166 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 19:58:04.639 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:58:04.641 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 19:58:19.106 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 19:58:19.501 | INFO     | database.vector_store:add_images:166 - Added 1 images to vector store
+2025-10-03 19:58:19.512 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 1fc5a5a79dfd1782
+2025-10-03 19:58:19.522 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 1fc5a5a79dfd1782 indexed status: True
+2025-10-03 19:58:19.522 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 19:58:19.525 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 1 documents
+2025-10-03 19:58:19.525 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for image: 1 docs
+2025-10-03 19:58:39.820 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: cross_modal search, modalities: ['image']
+2025-10-03 19:58:39.952 | ERROR    | api.main:query_system:433 - Error processing query: Error executing plan: Internal error: Error creating hnsw segment reader: Nothing found on disk
+2025-10-03 20:00:37.990 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 20:00:37.991 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 20:00:40.885 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:00:40.887 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:00:53.881 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 20:00:53.884 | WARNING  | api.main:upload_image:232 - Image 1fc5a5a79dfd1782 already exists. Deleting old version first.
+2025-10-03 20:00:53.958 | INFO     | database.vector_store:delete_by_source:313 - Deleted 1 entries from image.png in image_embeddings
+2025-10-03 20:00:53.977 | INFO     | database.metadata_store:delete_document:200 - Deleted document 1fc5a5a79dfd1782 (doc rows: 1, chunks: 0)
+2025-10-03 20:00:54.331 | INFO     | database.vector_store:add_images:166 - Added 1 images to vector store
+2025-10-03 20:00:54.339 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 1fc5a5a79dfd1782
+2025-10-03 20:00:54.348 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 1fc5a5a79dfd1782 indexed status: True
+2025-10-03 20:00:54.349 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 20:00:54.351 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 1 documents
+2025-10-03 20:00:54.351 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for image: 1 docs
+2025-10-03 20:06:47.819 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['text']
+2025-10-03 20:06:47.941 | ERROR    | api.main:query_system:433 - Error processing query: Error executing plan: Internal error: Error creating hnsw segment reader: Nothing found on disk
+2025-10-03 20:07:10.940 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 20:07:33.195 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 20:07:33.196 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:07:46.951 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:07:50.607 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:07:50.608 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 20:08:05.790 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 20:08:05.795 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:08:07.063 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:08:07.067 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:08:07.069 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:08:07.070 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:08:07.071 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 20:08:07.174 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 20:08:07.175 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:08:07.214 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:08:07.215 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:08:07.216 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:08:07.216 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:08:07.217 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:08:19.549 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:08:24.547 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:08:24.547 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 20:08:24.548 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 20:09:09.651 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: cross_modal search, modalities: ['image']
+2025-10-03 20:09:10.123 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 20:09:10.124 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 20:09:10.186 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 20:09:10.186 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in text collection for keyword search
+2025-10-03 20:11:40.888 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 20:12:03.611 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 20:12:03.612 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:12:18.003 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:12:21.841 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:12:21.841 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 20:12:37.239 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 20:12:37.241 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:12:37.843 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:12:37.847 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:12:37.849 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:12:37.850 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:12:37.850 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 20:12:37.922 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 20:12:37.923 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:12:37.966 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:12:37.968 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:12:37.969 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:12:37.970 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:12:37.971 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:12:51.749 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:12:56.403 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:12:56.403 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 20:12:56.404 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 20:13:22.744 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 20:13:22.745 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 20:13:25.923 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:13:26.002 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:13:49.576 | INFO     | processing.image_processor:process_image:123 - Image processed: 2400x1580, text found: True
+2025-10-03 20:13:49.714 | WARNING  | api.main:upload_image:232 - Image 1fc5a5a79dfd1782 already exists. Deleting old version first.
+2025-10-03 20:13:50.821 | INFO     | database.vector_store:delete_by_source:329 - Deleted 1 entries from image.png in image_embeddings
+2025-10-03 20:13:50.889 | INFO     | database.metadata_store:delete_document:200 - Deleted document 1fc5a5a79dfd1782 (doc rows: 1, chunks: 0)
+2025-10-03 20:13:52.275 | INFO     | database.vector_store:add_images:168 - Added 1 images to vector store
+2025-10-03 20:13:53.793 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 1fc5a5a79dfd1782
+2025-10-03 20:13:53.861 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 1fc5a5a79dfd1782 indexed status: True
+2025-10-03 20:13:53.862 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 20:13:53.874 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 1 documents
+2025-10-03 20:13:53.875 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for image: 1 docs
+2025-10-03 20:14:27.202 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: cross_modal search, modalities: ['image']
+2025-10-03 20:14:27.690 | WARNING  | retrieval.hybrid_search:keyword_search:201 - BM25 index not built for text, building now...
+2025-10-03 20:14:27.691 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 20:14:27.692 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 20:14:27.693 | WARNING  | retrieval.hybrid_search:keyword_search:207 - No documents in text collection for keyword search
+2025-10-03 20:17:29.382 | WARNING  | models.llm:generate_answer:85 - Primary LLM response failed validation; retrying with structured fallback prompt
+2025-10-03 20:17:29.580 | ERROR    | api.main:query_system:433 - Error processing query: `temperature` (=0.0) has to be a strictly positive float, otherwise your next token scores will be invalid. If you're looking for greedy decoding strategies, set `do_sample=False`.
+2025-10-03 20:19:36.354 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 20:20:02.417 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 20:20:02.417 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:20:16.539 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:20:20.241 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:20:20.241 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 20:20:34.553 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 20:20:34.557 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:20:35.634 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:20:35.637 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:20:35.639 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:20:35.640 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:20:35.641 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 20:20:35.759 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 20:20:35.760 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:20:35.842 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:20:35.844 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:20:35.846 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:20:35.847 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:20:35.848 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:20:49.020 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:20:53.007 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:20:53.007 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 20:20:53.008 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 20:22:11.028 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: cross_modal search, modalities: ['image']
+2025-10-03 20:22:11.667 | WARNING  | retrieval.hybrid_search:keyword_search:211 - BM25 index not built for text, building now...
+2025-10-03 20:22:11.668 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 20:22:11.749 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 20:22:11.750 | WARNING  | retrieval.hybrid_search:keyword_search:217 - No documents in text collection for keyword search
+2025-10-03 20:24:42.983 | WARNING  | models.llm:generate_answer:85 - Primary LLM response failed validation; retrying with structured fallback prompt
+2025-10-03 20:24:43.004 | ERROR    | api.main:query_system:433 - Error processing query: `temperature` (=0.0) has to be a strictly positive float, otherwise your next token scores will be invalid. If you're looking for greedy decoding strategies, set `do_sample=False`.
+2025-10-03 20:25:36.533 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 20:25:58.737 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 20:25:58.738 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:26:12.460 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:26:16.147 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:26:16.147 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 20:26:28.112 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 20:26:28.125 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:26:29.117 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:26:29.120 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:26:29.122 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:26:29.123 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:26:29.124 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 20:26:29.282 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 20:26:29.283 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:26:29.318 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:26:29.320 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:26:29.321 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:26:29.321 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:26:29.323 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:26:42.566 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:26:47.454 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:26:47.455 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 20:26:47.456 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 20:27:09.072 | INFO     | database.vector_store:delete_by_source:329 - Deleted 1 entries from image.png in image_embeddings
+2025-10-03 20:27:09.139 | INFO     | database.metadata_store:delete_document:200 - Deleted document 1fc5a5a79dfd1782 (doc rows: 1, chunks: 0)
+2025-10-03 20:27:09.140 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for image
+2025-10-03 20:27:09.142 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in image collection
+2025-10-03 20:27:25.951 | INFO     | api.main:upload_image:223 - Processing image: image.png
+2025-10-03 20:27:25.957 | INFO     | processing.image_processor:__init__:21 - Initializing OCR engine for languages: ['en']
+2025-10-03 20:27:29.740 | INFO     | processing.image_processor:process_image:88 - Processing image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:27:29.886 | INFO     | processing.image_processor:extract_text:38 - Extracting text from image: F:\Smart India Hackathon_2025\SIH25231\data\uploads\image.png
+2025-10-03 20:32:57.290 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2025-10-03 20:33:20.039 | INFO     | api.main:startup_event:80 - Starting Multimodal RAG System...
+2025-10-03 20:33:20.040 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:33:34.320 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:33:38.019 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:33:38.019 | INFO     | models.llm:__init__:18 - Loading LLM on cpu
+2025-10-03 20:33:52.536 | INFO     | models.llm:__init__:48 - LLM loaded successfully
+2025-10-03 20:33:52.541 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:33:53.804 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:33:53.807 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:33:53.809 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:33:53.809 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:33:53.810 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2025-10-03 20:33:53.940 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2025-10-03 20:33:53.942 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2025-10-03 20:33:53.987 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2025-10-03 20:33:53.988 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2025-10-03 20:33:53.990 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2025-10-03 20:33:53.991 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2025-10-03 20:33:53.991 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2025-10-03 20:34:07.104 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2025-10-03 20:34:11.664 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2025-10-03 20:34:11.665 | INFO     | retrieval.hybrid_search:__init__:119 - Hybrid search engine initialized
+2025-10-03 20:34:11.667 | INFO     | api.main:startup_event:91 - All components initialized successfully
+2025-10-03 20:34:43.433 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: cross_modal search, modalities: ['image']
+2025-10-03 20:34:44.104 | WARNING  | retrieval.hybrid_search:keyword_search:211 - BM25 index not built for text, building now...
+2025-10-03 20:34:44.105 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 20:34:44.193 | WARNING  | retrieval.hybrid_search:build_bm25_index:139 - No documents found in text collection
+2025-10-03 20:34:44.194 | WARNING  | retrieval.hybrid_search:keyword_search:217 - No documents in text collection for keyword search
+2025-10-03 20:37:12.654 | WARNING  | models.llm:generate_answer:85 - Primary LLM response failed validation; retrying with structured fallback prompt
+2025-10-03 20:41:15.766 | INFO     | api.main:upload_document:135 - Processing document: yes.pdf
+2025-10-03 20:41:15.768 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\yes.pdf
+2025-10-03 20:41:16.534 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 6 pages
+2025-10-03 20:41:16.542 | INFO     | processing.document_processor:process_and_chunk:161 - Created 7 chunks from PDF
+2025-10-03 20:41:22.540 | INFO     | database.vector_store:add_text_chunks:127 - Added 7 text chunks to vector store
+2025-10-03 20:41:22.564 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: yes-pdf-doc
+2025-10-03 20:41:22.609 | INFO     | database.metadata_store:add_chunks:184 - Added 7 chunks for document yes-pdf-doc
+2025-10-03 20:41:22.624 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document yes-pdf-doc indexed status: True
+2025-10-03 20:41:22.624 | INFO     | retrieval.hybrid_search:build_bm25_index:123 - Building BM25 index for text
+2025-10-03 20:41:22.631 | INFO     | retrieval.hybrid_search:fit:57 - BM25 index built with 7 documents
+2025-10-03 20:41:22.631 | INFO     | retrieval.hybrid_search:build_bm25_index:148 - BM25 index built for text: 7 docs
+2025-10-03 20:41:31.628 | INFO     | retrieval.query_router:analyze_query:64 - Query analysis: hybrid search, modalities: ['audio', 'image', 'text']

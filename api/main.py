@@ -287,11 +287,13 @@ async def upload_audio(file: UploadFile = File(...)):
         
         # Process audio
         audio_processor = AudioProcessor()
-        audio_data = audio_processor.process_audio(str(file_path))
-        
-        # Generate audio ID
         import hashlib
         audio_id = hashlib.md5(file.filename.encode()).hexdigest()[:16]
+        audio_data = audio_processor.process_audio(
+            str(file_path),
+            doc_id=audio_id,
+            source=file.filename
+        )
         
         # Check if audio already exists
         existing_doc = metadata_store.get_document(audio_id)
@@ -303,7 +305,9 @@ async def upload_audio(file: UploadFile = File(...)):
                 logger.error(f"Failed to delete existing audio: {e}")
         
         # Generate embeddings for chunks
-        chunk_texts = [chunk["text"] for chunk in audio_data["chunks"]]
+        chunk_texts = [chunk["text"] for chunk in audio_data["chunks"] if chunk.get("text")]
+        if not chunk_texts:
+            raise HTTPException(status_code=400, detail="No transcription content extracted from audio")
         embeddings = embedder.text_embedder.embed_text(chunk_texts)
         
         # Store in vector database
@@ -315,17 +319,21 @@ async def upload_audio(file: UploadFile = File(...)):
         vector_store.add_audio_chunks(audio_data["chunks"], embeddings, audio_metadata)
         
         # Store metadata
+        doc_metadata = {
+            "file_size": file_path.stat().st_size if file_path.exists() else None,
+            "language": audio_data.get("language"),
+            "num_segments": len(audio_data.get("segments", [])),
+            "num_chunks": len(audio_data.get("chunks", []))
+        }
         metadata_store.add_document({
             "doc_id": audio_id,
             "source": file.filename,
             "file_path": str(file_path),
             "type": "audio",
             "duration": audio_data["duration"],
-            "metadata": {
-                "language": audio_data["language"],
-                "num_segments": len(audio_data["segments"])
-            }
+            "metadata": doc_metadata
         })
+        metadata_store.add_chunks(audio_data["chunks"], audio_id)
         metadata_store.update_document_indexed(audio_id, True)
         
         # Rebuild BM25 index
@@ -359,20 +367,23 @@ async def query_system(request: QueryRequest):
         query_analysis = query_router.analyze_query(request.query)
         
         # Perform search based on analysis
+        # Perform search based on analysis
         if query_analysis["search_strategy"] == "cross_modal":
-            search_results = search_engine.cross_modal_search(
+            # For cross-modal, search text collection only for now
+            # (images need visual embeddings, not text embeddings)
+            all_results = search_engine.hybrid_search(
                 request.query,
-                top_k_per_type=request.top_k // 3
-            )
-            # Flatten results
-            all_results = (
-                search_results["text"] +
-                search_results["image"] +
-                search_results["audio"]
+                collection_type="text",  # Force text only
+                top_k=request.top_k
             )
         else:
             # Single modality search
             target_modality = query_analysis["target_modalities"][0] if query_analysis["target_modalities"] else "text"
+            
+            # Only search text collection for text queries
+            if target_modality in ["image", "audio"]:
+                target_modality = "text"  # Fallback to text
+            
             all_results = search_engine.hybrid_search(
                 request.query,
                 collection_type=target_modality,

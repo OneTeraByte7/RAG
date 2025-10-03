@@ -1,9 +1,12 @@
 import argparse
+import shlex
 import uvicorn
 from loguru import logger
 from pathlib import Path
 import sys
 import os
+import hashlib
+from typing import Optional, Dict, Callable
 
 os.environ['HF_HOME'] = 'F:/Smart India Hackathon_2025/SIH25231/models_cache'
 os.environ['TRANSFORMERS_CACHE'] = 'F:/Smart India Hackathon_2025/SIH25231/models_cache/transformers'
@@ -32,7 +35,7 @@ def run_api_server():
         "api.main:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
-        reload=settings.DEBUG,
+        reload=settings.API_RELOAD,
         log_level=settings.LOG_LEVEL.lower()
     )
 
@@ -118,79 +121,388 @@ def run_batch_processing(directory: str):
     logger.info("✅ Batch processing completed")
 
 
+def ingest_document_cli(
+    file_path: str,
+    doc_processor,
+    embedder,
+    vector_store,
+    metadata_store,
+    rebuilders: Optional[Dict[str, Callable[[], None]]] = None,
+    doc_id_override: Optional[str] = None
+):
+    """Process and store a single document from the CLI."""
+    path = Path(file_path).expanduser()
+    if not path.is_absolute():
+        path = (Path.cwd() / path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"Document not found: {path}")
+
+    suffix = path.suffix.lower()
+    text_exts = {".pdf", ".docx", ".doc"}
+    audio_exts = {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma", ".webm"}
+
+    rebuilders = rebuilders or {}
+    doc_type = None
+    chunk_count = 0
+    doc_id = None
+
+    if suffix in text_exts:
+        if suffix == ".pdf":
+            doc_type = "pdf"
+        elif suffix == ".doc":
+            doc_type = "doc"
+        else:
+            doc_type = "docx"
+        chunks = doc_processor.process_document(str(path), doc_id_override)
+        if not chunks:
+            raise ValueError("No content extracted from document")
+
+        chunk_texts = [chunk["text"] for chunk in chunks]
+        embeddings = embedder.text_embedder.embed_text(chunk_texts)
+
+        vector_store.add_text_chunks(chunks, embeddings)
+
+        doc_id = chunks[0]["metadata"]["doc_id"]
+        doc_metadata = {
+            "num_chunks": len(chunks),
+            "file_size": path.stat().st_size,
+            "doc_type": doc_type
+        }
+
+        metadata_store.add_document({
+            "doc_id": doc_id,
+            "source": path.name,
+            "file_path": str(path),
+            "type": doc_type,
+            "metadata": doc_metadata
+        })
+        metadata_store.add_chunks(chunks, doc_id)
+        metadata_store.update_document_indexed(doc_id, True)
+
+        rebuild_cb = rebuilders.get("text")
+        if rebuild_cb:
+            rebuild_cb()
+
+        chunk_count = len(chunks)
+
+    elif suffix in audio_exts:
+        from models.audio import AudioProcessor
+
+        doc_type = "audio"
+        audio_processor = AudioProcessor()
+
+        override = doc_id_override.strip() if doc_id_override and doc_id_override.strip() else None
+        doc_id = override or hashlib.md5(str(path).encode()).hexdigest()[:16]
+
+        audio_data = audio_processor.process_audio(
+            str(path),
+            doc_id=doc_id,
+            source=path.name
+        )
+
+        chunk_records = [chunk for chunk in audio_data.get("chunks", []) if chunk.get("text")]
+        if not chunk_records:
+            raise ValueError("No transcription content extracted from audio")
+
+        chunk_texts = [chunk["text"] for chunk in chunk_records]
+        embeddings = embedder.text_embedder.embed_text(chunk_texts)
+
+        vector_store.add_audio_chunks(
+            chunk_records,
+            embeddings,
+            {
+                "audio_id": doc_id,
+                "source": path.name,
+                "duration": audio_data.get("duration")
+            }
+        )
+
+        metadata_store.add_document({
+            "doc_id": doc_id,
+            "source": path.name,
+            "file_path": str(path),
+            "type": "audio",
+            "duration": audio_data.get("duration"),
+            "metadata": {
+                "file_size": path.stat().st_size,
+                "language": audio_data.get("language"),
+                "num_segments": len(audio_data.get("segments", [])),
+                "num_chunks": len(chunk_records)
+            }
+        })
+        metadata_store.add_chunks(chunk_records, doc_id)
+        metadata_store.update_document_indexed(doc_id, True)
+
+        rebuild_cb = rebuilders.get("audio")
+        if rebuild_cb:
+            rebuild_cb()
+
+        chunk_count = len(chunk_records)
+
+    else:
+        raise ValueError("Only PDF, DOCX, and common audio files are supported")
+
+    return doc_id, chunk_count, doc_type
+
+
+def _print_cli_help():
+    print("\nCommands:")
+    print("  /add <path> [--id <custom_id>]  ➜ Ingest a PDF, DOCX, or audio file into the knowledge base")
+    print("  /list                           ➜ List indexed documents")
+    print("  /reindex                        ➜ Rebuild BM25 indexes for all modalities")
+    print("  /help                           ➜ Show this help message")
+    print("  /exit                           ➜ Quit the CLI")
+    print("\nType any other text to run a query against indexed documents.\n")
+
+
 def run_cli_query():
     """Run interactive CLI query interface"""
     from models.embeddings import MultimodalEmbedder
     from models.llm import LLMGenerator
     from retrieval.hybrid_search import HybridSearchEngine
     from retrieval.query_router import QueryRouter
+    from processing.document_processor import DocumentProcessor
+    from database.metadata_store import MetadataStore
     
     logger.info("Starting CLI query interface")
-    
-    # Initialize components
+
     embedder = MultimodalEmbedder()
     llm = LLMGenerator()
     search_engine = HybridSearchEngine()
     query_router = QueryRouter()
-    
-    print("\n" + "="*60)
+    metadata_store = MetadataStore()
+    doc_processor = DocumentProcessor()
+
+    print("\n" + "=" * 60)
     print("Multimodal RAG System - CLI Interface")
-    print("="*60)
-    print("Type 'exit' to quit\n")
-    
+    print("=" * 60)
+    _print_cli_help()
+
     while True:
         try:
-            query = input("\n🔍 Query: ").strip()
-            
-            if query.lower() in ['exit', 'quit', 'q']:
+            user_input = input("\n🗨️  Input (/help for commands): ").strip()
+
+            if not user_input:
+                continue
+
+            if user_input.startswith(('/', ':')):
+                try:
+                    parts = shlex.split(user_input[1:])
+                except ValueError as exc:
+                    print(f"❌ Unable to parse command: {exc}")
+                    continue
+
+                if not parts:
+                    continue
+
+                command = parts[0].lower()
+                args = parts[1:]
+
+                if command in {"exit", "quit", "q"}:
+                    print("Goodbye!")
+                    break
+                if command in {"help", "h"}:
+                    _print_cli_help()
+                    continue
+                if command == "list":
+                    docs = metadata_store.get_all_documents()
+                    if not docs:
+                        print("No documents indexed yet.")
+                    else:
+                        print("\nIndexed documents:")
+                        for doc in docs:
+                            status = "indexed" if doc.get("is_indexed") else "pending"
+                            print(f"  • {doc['id']} ({doc['source']}) - {doc['doc_type']} [{status}]")
+                    continue
+                if command == "reindex":
+                    search_engine.build_bm25_index("text")
+                    search_engine.build_bm25_index("image")
+                    search_engine.build_bm25_index("audio")
+                    print("✅ Rebuilt BM25 index for text, image, and audio collections")
+                    continue
+                if command == "add":
+                    if not args:
+                        print("Usage: /add <path> [--id <custom_id>]")
+                        continue
+
+                    doc_path = None
+                    doc_id_override = None
+                    idx = 0
+                    while idx < len(args):
+                        token = args[idx]
+                        if token in {"--id", "-i"}:
+                            if idx + 1 >= len(args):
+                                print("❌ Missing value for --id")
+                                doc_path = None
+                                break
+                            doc_id_override = args[idx + 1]
+                            idx += 2
+                        elif token.startswith("--id="):
+                            doc_id_override = token.split("=", 1)[1]
+                            idx += 1
+                        elif doc_path is None:
+                            doc_path = token
+                            idx += 1
+                        else:
+                            # Additional positional tokens are unexpected
+                            print("❌ Unexpected extra argument. Wrap paths with spaces in quotes.")
+                            doc_path = None
+                            break
+
+                    if not doc_path:
+                        continue
+
+                    try:
+                        doc_id, chunk_count, doc_type = ingest_document_cli(
+                            doc_path,
+                            doc_processor,
+                            embedder,
+                            search_engine.vector_store,
+                            metadata_store,
+                            rebuilders={
+                                "text": lambda: search_engine.build_bm25_index("text"),
+                                "image": lambda: search_engine.build_bm25_index("image"),
+                                "audio": lambda: search_engine.build_bm25_index("audio")
+                            },
+                            doc_id_override=doc_id_override
+                        )
+                        if doc_type == "audio":
+                            label = "Audio"
+                        elif doc_type == "pdf":
+                            label = "PDF"
+                        elif doc_type == "docx":
+                            label = "DOCX"
+                        elif doc_type == "doc":
+                            label = "DOC"
+                        else:
+                            label = doc_type.upper() if doc_type else "Document"
+
+                        print(f"✅ {label} '{doc_id}' indexed with {chunk_count} chunks")
+                    except Exception as exc:
+                        logger.error(f"CLI ingestion failed: {exc}")
+                        print(f"❌ Failed to index document: {exc}")
+                    continue
+
+                print(f"❌ Unknown command: {command}. Type /help for options.")
+                continue
+
+            if user_input.lower() in {"exit", "quit", "q"}:
                 print("Goodbye!")
                 break
-            
-            if not query:
-                continue
-            
-            # Analyze query
+
+            query = user_input
+
             analysis = query_router.analyze_query(query)
             print(f"\n📊 Strategy: {analysis['search_strategy']}")
-            print(f"🎯 Modalities: {', '.join(analysis['target_modalities'])}")
-            
-            # Search
-            results = search_engine.hybrid_search(query, "text", top_k=10)
-            
+
+            detected_modalities = analysis.get("target_modalities") or ["text"]
+            modality_order = ["text", "image", "audio"]
+            modalities = [m for m in modality_order if m in detected_modalities]
+            modalities.extend([m for m in detected_modalities if m not in modalities])
+            modalities = modalities or ["text"]
+            print(f"🎯 Modalities: {', '.join(modalities)}")
+
+            results = []
+            if analysis["search_strategy"] == "cross_modal" or len(modalities) > 1:
+                cross_results = search_engine.cross_modal_search(query, top_k_per_type=5)
+                for modality in modalities:
+                    results.extend(cross_results.get(modality, []))
+            else:
+                target_modality = modalities[0]
+                results = search_engine.hybrid_search(query, target_modality, top_k=10)
+
             if not results:
                 print("❌ No results found")
                 continue
-            
-            print(f"\n📚 Found {len(results)} results")
-            
-            # Generate answer
-            contexts = [
-                {
-                    "id": r["id"],
-                    "text": r["text"],
-                    "type": r.get("metadata", {}).get("type", "text"),
-                    "source": r.get("metadata", {}).get("source", "unknown"),
-                    "page": r.get("metadata", {}).get("page", "")
+
+            def _to_float(value):
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return None
+
+            results.sort(key=lambda r: r.get("score", 0), reverse=True)
+
+            found_modalities = sorted({
+                (r.get("metadata", {}) or {}).get("type", modalities[0])
+                for r in results
+            })
+            print(f"\n📚 Found {len(results)} results across {', '.join(found_modalities)}")
+
+            for idx, result in enumerate(results[:5], start=1):
+                meta = result.get("metadata", {})
+                result_type = meta.get("type", modalities[0])
+                source = meta.get("source", meta.get("doc_id", "unknown"))
+
+                location_bits = []
+                if result_type in {"pdf", "docx", "text"}:
+                    page = meta.get("page")
+                    if page:
+                        location_bits.append(f"page {page}")
+                if result_type == "audio":
+                    start_val = _to_float(meta.get("start"))
+                    end_val = _to_float(meta.get("end"))
+                    if start_val is not None:
+                        if end_val is not None and end_val != start_val:
+                            location_bits.append(f"{start_val:.1f}s–{end_val:.1f}s")
+                        else:
+                            location_bits.append(f"{start_val:.1f}s")
+
+                location = f" ({', '.join(location_bits)})" if location_bits else ""
+                display_type = {
+                    "text": "TEXT",
+                    "audio": "AUDIO",
+                    "image": "IMAGE",
+                    "pdf": "PDF",
+                    "docx": "DOCX",
+                    "doc": "DOC"
+                }.get(result_type, str(result_type).upper())
+                snippet = (result.get("text", "")[:200] or "").replace("\n", " ")
+                print(f"  {idx}. [{display_type}] {source}{location}: {snippet}...")
+
+            contexts = []
+            for r in results[:5]:
+                meta = r.get("metadata", {}) or {}
+                result_type = meta.get("type", modalities[0])
+                source = meta.get("source", meta.get("doc_id", "unknown"))
+                context_entry = {
+                    "id": r.get("id"),
+                    "text": r.get("text"),
+                    "type": result_type,
+                    "source": source,
+                    "page": meta.get("page", "")
                 }
-                for r in results[:5]
-            ]
-            
+
+                if result_type == "audio":
+                    start_val = _to_float(meta.get("start"))
+                    end_val = _to_float(meta.get("end"))
+                    if start_val is not None:
+                        if end_val is not None and end_val != start_val:
+                            timestamp = f"{start_val:.1f}s – {end_val:.1f}s"
+                        else:
+                            timestamp = f"{start_val:.1f}s"
+                        context_entry["timestamp"] = timestamp
+                        context_entry["page"] = timestamp
+
+                contexts.append(context_entry)
+
             print("\n🤖 Generating answer...")
             answer = llm.generate_answer(query, contexts)
-            
-            print("\n" + "="*60)
+
+            print("\n" + "=" * 60)
             print("ANSWER:")
-            print("="*60)
+            print("=" * 60)
             print(answer["answer"])
-            
+
             if answer["citations"]:
                 print("\n📖 CITATIONS:")
                 for i, citation in enumerate(answer["citations"], 1):
                     print(f"\n[{i}] {citation['source_name']} ({citation['location']})")
                     print(f"    {citation['text_snippet']}")
-            
-            print("\n" + "="*60)
-            
+
+            print("\n" + "=" * 60)
+
         except KeyboardInterrupt:
             print("\n\nGoodbye!")
             break

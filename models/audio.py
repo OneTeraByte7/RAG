@@ -190,7 +190,9 @@ class AudioProcessor:
     def process_audio(
         self,
         audio_path: str,
-        add_speakers: bool = False
+        add_speakers: bool = False,
+        doc_id: Optional[str] = None,
+        source: Optional[str] = None
     ) -> Dict:
         """
         Complete audio processing pipeline
@@ -213,15 +215,25 @@ class AudioProcessor:
             )
         
         # Create searchable chunks (30-second segments)
-        chunks = self._create_chunks(result["segments"])
+        chunks = self._create_chunks(
+            result["segments"],
+            doc_id=doc_id,
+            source=source
+        )
         result["chunks"] = chunks
+        if doc_id:
+            result["audio_id"] = doc_id
+        if source:
+            result["source"] = source
         
         return result
     
     def _create_chunks(
         self,
         segments: List[Dict],
-        chunk_duration: int = 30
+        chunk_duration: int = 30,
+        doc_id: Optional[str] = None,
+        source: Optional[str] = None
     ) -> List[Dict]:
         """
         Create fixed-duration chunks for indexing
@@ -235,29 +247,51 @@ class AudioProcessor:
         """
         chunks = []
         current_chunk = {
-            "start": 0,
-            "end": chunk_duration,
+            "start": 0.0,
+            "end": float(chunk_duration),
             "text": [],
             "segment_ids": []
         }
+        chunk_index = 0
         
+        def finalize_chunk(index: int) -> Optional[Dict]:
+            chunk_text = " ".join(current_chunk["text"]).strip()
+            if not chunk_text:
+                return None
+
+            metadata = {
+                "type": "audio",
+                "doc_id": doc_id or "unknown",
+                "source": source or "unknown",
+                "start": current_chunk["start"],
+                "end": current_chunk["end"],
+                "segment_ids": list(current_chunk["segment_ids"])
+            }
+
+            return {
+                "chunk_id": index,
+                "start": current_chunk["start"],
+                "end": current_chunk["end"],
+                "text": chunk_text,
+                "segment_ids": list(current_chunk["segment_ids"]),
+                "metadata": metadata
+            }
+
         for segment in segments:
             segment_start = segment["start"]
             
             # If segment exceeds current chunk, finalize and start new
             if segment_start >= current_chunk["end"]:
                 if current_chunk["text"]:
-                    chunks.append({
-                        "start": current_chunk["start"],
-                        "end": current_chunk["end"],
-                        "text": " ".join(current_chunk["text"]),
-                        "segment_ids": current_chunk["segment_ids"]
-                    })
+                    finalized = finalize_chunk(chunk_index)
+                    if finalized:
+                        chunks.append(finalized)
+                        chunk_index += 1
                 
                 # Start new chunk
                 current_chunk = {
-                    "start": current_chunk["end"],
-                    "end": current_chunk["end"] + chunk_duration,
+                    "start": float(current_chunk["end"]),
+                    "end": float(current_chunk["end"]) + float(chunk_duration),
                     "text": [],
                     "segment_ids": []
                 }
@@ -267,11 +301,8 @@ class AudioProcessor:
         
         # Add last chunk
         if current_chunk["text"]:
-            chunks.append({
-                "start": current_chunk["start"],
-                "end": current_chunk["end"],
-                "text": " ".join(current_chunk["text"]),
-                "segment_ids": current_chunk["segment_ids"]
-            })
+            finalized = finalize_chunk(chunk_index)
+            if finalized:
+                chunks.append(finalized)
         
         return chunks

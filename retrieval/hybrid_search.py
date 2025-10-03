@@ -164,8 +164,15 @@ class HybridSearchEngine:
         Returns:
             List of results
         """
+        # Pick the right embedding head for each modality
+        embedding_type = "text"
+        if collection_type == "image":
+            embedding_type = "cross_modal_text"
+        elif collection_type == "audio":
+            embedding_type = "text"  # audio search is performed over transcripts
+
         # Generate query embedding
-        query_embedding = self.embedder.embed(query, content_type="text")
+        query_embedding = self.embedder.embed(query, content_type=embedding_type)
         
         # Search vector store
         results = self.vector_store.search(
@@ -176,6 +183,9 @@ class HybridSearchEngine:
         
         # Format results
         formatted_results = []
+        if not results['ids'][0]:
+            return formatted_results
+
         for i in range(len(results['ids'][0])):
             formatted_results.append({
                 "id": results['ids'][0][i],

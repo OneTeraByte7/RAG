@@ -76,7 +76,7 @@ POST http://localhost:8000/query
 Content-Type: application/json
 
 {
-  "query": "What topics are covered in this document?",
+  "query": "Can i clear a exam using this pdf?",
   "top_k": 10,
   "search_type": "hybrid"
 }
@@ -86,7 +86,7 @@ POST http://localhost:8000/query
 Content-Type: application/json
 
 {
-  "query": "Explain the main concepts",
+  "query": "Explain the main concepts in the image",
   "top_k": 5,
   "search_type": "semantic"
 }
@@ -129,7 +129,7 @@ DELETE http://localhost:8000/documents/yes-pdf-doc
 
 ### Delete ALL Documents (DANGER: Nuclear Option!)
 ### Uncomment the line below to use
-# DELETE http://localhost:8000/documents
+DELETE http://localhost:8000/documents
 
 ###############################################
 # RECOMMENDED WORKFLOWS
@@ -145,7 +145,7 @@ DELETE http://localhost:8000/documents/yes-pdf-doc
 # GET /stats
 #
 # Step 3: Test retrieval
-# POST /query
+POST /query
 
 # ========================================
 # WORKFLOW 2: Re-uploading Same Document

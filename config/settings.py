@@ -1,7 +1,8 @@
 """
 Configuration settings for the Multimodal RAG System
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
 from pathlib import Path
 from typing import Optional
 import os
@@ -10,15 +11,23 @@ import os
 class Settings(BaseSettings):
     """Application settings"""
     
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
     # Application
     APP_NAME: str = "Multimodal RAG System"
     VERSION: str = "1.0.0"
-    DEBUG: bool = False
+    DEBUG_INPUT: bool | str | None = Field(
+        default=None,
+        validation_alias="DEBUG",
+        exclude=True,
+    )
+    DEBUG_ENABLED: bool = False
     
     # API Settings
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     API_PREFIX: str = "/api/v1"
+    API_RELOAD: bool = False
     
     # Paths - CHANGED TO F: DRIVE
     BASE_DIR: Path = Path("F:/Smart India Hackathon_2025/SIH25231")
@@ -30,6 +39,8 @@ class Settings(BaseSettings):
     # Model Settings
     EMBEDDING_MODEL: str = "nomic-ai/nomic-embed-text-v1.5"
     EMBEDDING_DIMENSION: int = 768
+    IMAGE_EMBEDDING_DIMENSION: int = 512
+    AUDIO_EMBEDDING_DIMENSION: int = 768
     LLM_MODEL: str = "microsoft/phi-1_5"
     WHISPER_MODEL: str = "large-v3"
     CLIP_MODEL: str = "ViT-B/32"
@@ -79,9 +90,62 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: Path = BASE_DIR / "logs" / "app.log"
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    @model_validator(mode="after")
+    def _normalise_debug(self):
+        """Normalise DEBUG inputs and keep LOG_LEVEL aligned."""
+        raw_value = getattr(self, "DEBUG_INPUT", None)
+
+        # Short-circuit when no explicit DEBUG value was provided
+        if raw_value is None:
+            return self
+
+        truthy = {"1", "true", "yes", "on", "t", "y"}
+        falsy = {"0", "false", "no", "off", "f", "n"}
+        level_map = {
+            "trace": "TRACE",
+            "debug": "DEBUG",
+            "info": "INFO",
+            "warn": "WARNING",
+            "warning": "WARNING",
+            "error": "ERROR",
+            "critical": "CRITICAL",
+            "fatal": "CRITICAL",
+        }
+
+        level = None
+
+        if isinstance(raw_value, bool):
+            self.DEBUG_ENABLED = raw_value
+            level = "DEBUG" if raw_value else None
+        elif isinstance(raw_value, str):
+            lowered = raw_value.strip().lower()
+
+            if lowered in truthy:
+                self.DEBUG_ENABLED = True
+                level = "DEBUG"
+            elif lowered in falsy:
+                self.DEBUG_ENABLED = False
+            elif lowered in level_map:
+                level = level_map[lowered]
+                self.DEBUG_ENABLED = level in {"TRACE", "DEBUG"}
+            else:
+                raise ValueError(
+                    "DEBUG must be a boolean value or a recognised log level (trace/debug/info/warn/error/critical)."
+                )
+        else:
+            raise ValueError("DEBUG must be provided as a boolean or string.")
+
+        if level and "LOG_LEVEL" not in self.model_fields_set:
+            self.LOG_LEVEL = level
+
+        if "API_RELOAD" not in self.model_fields_set:
+            object.__setattr__(self, "API_RELOAD", bool(self.DEBUG_ENABLED))
+
+        return self
+
+    @property
+    def DEBUG(self) -> bool:
+        return self.DEBUG_ENABLED
     
     @property
     def database_url(self) -> str:

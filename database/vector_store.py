@@ -15,6 +15,7 @@ class VectorStore:
 
     def __init__(self, persist_directory: str = None):
         self.persist_directory = persist_directory or str(settings.VECTOR_DB_DIR)
+        Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Initializing ChromaDB at {self.persist_directory}")
 
@@ -34,9 +35,12 @@ class VectorStore:
             collection = self.client.get_collection(name)
             logger.info(f"Loaded existing collection: {name}")
         except:
+            # Set metadata based on collection type
+            metadata = {"hnsw:space": settings.CHROMA_DISTANCE_FUNCTION}
+            
             collection = self.client.create_collection(
                 name=name,
-                metadata={"hnsw:space": settings.CHROMA_DISTANCE_FUNCTION}
+                metadata=metadata
             )
             logger.info(f"Created new collection: {name}")
         
@@ -121,6 +125,7 @@ class VectorStore:
         )
         
         logger.info(f"Added {len(chunks)} text chunks to vector store")
+        self._persist_if_supported()
     
     def add_images(
         self,
@@ -161,6 +166,7 @@ class VectorStore:
         )
         
         logger.info(f"Added {len(images)} images to vector store")
+        self._persist_if_supported()
     
     def add_audio_chunks(
         self,
@@ -180,20 +186,39 @@ class VectorStore:
             return
         
         audio_id = audio_metadata.get("audio_id", "unknown")
-        ids = [f"audio_{audio_id}_{i}" for i in range(len(chunks))]
+        ids = [
+            f"audio_{audio_id}_{chunk.get('chunk_id', idx)}"
+            for idx, chunk in enumerate(chunks)
+        ]
         
         documents = [chunk["text"] for chunk in chunks]
-        
-        metadatas = [
-            {
+
+        metadatas = []
+        for chunk in chunks:
+            chunk_meta = {
                 "type": "audio",
                 "source": audio_metadata.get("source", "unknown"),
                 "audio_id": audio_id,
-                "start": str(chunk["start"]),
-                "end": str(chunk["end"])
+                "doc_id": audio_metadata.get("audio_id", audio_id),
+                "chunk_id": str(chunk.get("chunk_id")),
+                "start": str(chunk.get("start")),
+                "end": str(chunk.get("end"))
             }
-            for chunk in chunks
-        ]
+
+            raw_metadata = chunk.get("metadata") or {}
+
+            if raw_metadata:
+                chunk_meta["type"] = raw_metadata.get("type", chunk_meta["type"])
+                chunk_meta["source"] = raw_metadata.get("source", chunk_meta["source"])
+                chunk_meta["doc_id"] = raw_metadata.get("doc_id", chunk_meta["doc_id"])
+                chunk_meta["start"] = str(raw_metadata.get("start", chunk.get("start")))
+                chunk_meta["end"] = str(raw_metadata.get("end", chunk.get("end")))
+                if raw_metadata.get("segment_ids") is not None:
+                    chunk_meta["segment_ids"] = ",".join(
+                        [str(seg) for seg in raw_metadata.get("segment_ids", [])]
+                    )
+
+            metadatas.append(chunk_meta)
         
         self.audio_collection.add(
             ids=ids,
@@ -203,6 +228,7 @@ class VectorStore:
         )
         
         logger.info(f"Added {len(chunks)} audio chunks to vector store")
+        self._persist_if_supported()
     
     def search(
         self,
@@ -234,11 +260,23 @@ class VectorStore:
             raise ValueError(f"Unknown collection type: {collection_type}")
         
         # Perform search
-        results = collection.query(
-            query_embeddings=[query_embedding.tolist()],
-            n_results=n_results,
-            where=where
-        )
+        if collection.count() == 0:
+            logger.debug(f"No vectors in {collection_type} collection; returning empty result.")
+            return self._empty_query_result()
+        
+        try:
+            results = collection.query(
+                query_embeddings=[query_embedding.tolist()],
+                n_results=n_results,
+                where=where
+            )
+        except RuntimeError as exc:
+            if "Nothing found on disk" in str(exc):
+                logger.warning(
+                    f"HNSW index missing on disk for collection {collection.name}; returning empty result."
+                )
+                return self._empty_query_result()
+            raise
         
         return results
     
@@ -309,5 +347,24 @@ class VectorStore:
     
     def persist(self):
         """Persist the database to disk"""
-        self.client.persist()
-        logger.info("Vector store persisted to disk")
+        if hasattr(self.client, "persist"):
+            self.client.persist()
+            logger.info("Vector store persisted to disk")
+        else:
+            logger.debug("Persistent client handles writes automatically; no manual persist needed")
+
+    def _persist_if_supported(self):
+        if hasattr(self.client, "persist"):
+            try:
+                self.client.persist()
+            except Exception as exc:
+                logger.warning(f"Failed to persist vector store: {exc}")
+
+    @staticmethod
+    def _empty_query_result() -> Dict:
+        return {
+            "ids": [[]],
+            "distances": [[]],
+            "metadatas": [[]],
+            "documents": [[]]
+        }
