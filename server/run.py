@@ -514,6 +514,12 @@ def run_cli_query():
 def main():
     """Main entry point"""
     setup_logging()
+
+    if len(sys.argv) == 1:
+        logger.info("No CLI arguments supplied; starting API server in simple mode.")
+        print(f"\nServer running at http://{settings.API_HOST}:{settings.API_PORT} (Ctrl+C to stop)\n")
+        run_api_server()
+        return
     
     parser = argparse.ArgumentParser(description="Multimodal RAG System")
     parser.add_argument(

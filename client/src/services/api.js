@@ -78,3 +78,19 @@ export const getStats = async () => {
   const response = await fetch(`${API_BASE_URL}/stats`);
   return handleResponse(response);
 };
+
+export const deleteDocument = async (docId) => {
+  const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(docId)}`, {
+    method: "DELETE",
+  });
+
+  return handleResponse(response);
+};
+
+export const deleteAllDocuments = async () => {
+  const response = await fetch(`${API_BASE_URL}/documents`, {
+    method: "DELETE",
+  });
+
+  return handleResponse(response);
+};

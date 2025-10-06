@@ -240,9 +240,13 @@ class HybridSearchEngine:
         Returns:
             Fused results
         """
-        # Get results from both methods
-        semantic_results = self.semantic_search(query, collection_type, top_k * 2)
-        keyword_results = self.keyword_search(query, collection_type, top_k * 2)
+        candidate_pool = max(top_k, 5)
+        rerank_cap = getattr(settings, "RERANK_TOP_K", 10)
+        candidate_pool = min(candidate_pool * 2, max(rerank_cap, candidate_pool))
+
+        # Get results from both methods, limiting to a smaller candidate pool for speed
+        semantic_results = self.semantic_search(query, collection_type, candidate_pool)
+        keyword_results = self.keyword_search(query, collection_type, candidate_pool)
         
         # Reciprocal Rank Fusion
         rrf_scores = defaultdict(float)

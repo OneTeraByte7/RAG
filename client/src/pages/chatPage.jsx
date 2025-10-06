@@ -20,11 +20,31 @@ import {
   queryRag,
   listDocuments,
   getStats,
+  deleteDocument,
+  deleteAllDocuments,
 } from "../services/api";
 const initialBotMessage = {
   sender: "bot",
   text: "Hello! 👋 I'm your AI assistant. Upload a file or ask a question to get started.",
 };
+
+const AVAILABLE_MODELS = [
+  {
+    label: "Phi-3 Mini (fast)",
+    value: "microsoft/phi-3-mini-4k-instruct",
+    description: "Great for quick Q&A and factual answers."
+  },
+  {
+    label: "Phi-3 Medium", 
+    value: "microsoft/phi-3-medium-4k-instruct",
+    description: "Balances depth and speed for longer responses."
+  },
+  {
+    label: "Phi-3 Vision", 
+    value: "microsoft/phi-3-vision",
+    description: "Best when combining text with images."
+  }
+];
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([initialBotMessage]);
@@ -35,6 +55,9 @@ const ChatPage = () => {
   const [documents, setDocuments] = useState([]);
   const [stats, setStats] = useState(null);
   const [errorBanner, setErrorBanner] = useState(null);
+  const [deletingDocId, setDeletingDocId] = useState(null);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].value);
   const fileInputRef = useRef(null);
 
   const refreshSystemData = useCallback(async () => {
@@ -264,6 +287,80 @@ const ChatPage = () => {
     return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />;
   };
 
+  const handleModelChange = (event) => {
+    const { value } = event.target;
+    setSelectedModel(value);
+    const picked = AVAILABLE_MODELS.find((model) => model.value === value);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "bot",
+        text: `✅ Model preference set to ${picked?.label || value}. (UI-only setting)`
+      }
+    ]);
+  };
+
+  const handleDeleteDocument = async (docId, docSource) => {
+    if (!docId) {
+      return;
+    }
+    setDeletingDocId(docId);
+    setErrorBanner(null);
+
+    try {
+      const response = await deleteDocument(docId);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `🧹 Removed ${docSource || docId} from the cache. ${response.message || ""}`.trim(),
+        },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `❌ Failed to delete ${docSource || docId}: ${error.message}`,
+          isError: true,
+        },
+      ]);
+      setErrorBanner(error.message);
+    } finally {
+      setDeletingDocId(null);
+      refreshSystemData();
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    setErrorBanner(null);
+
+    try {
+      const response = await deleteAllDocuments();
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `🗑️ Cleared cached documents. ${response.message || ""}`.trim(),
+        },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `❌ Failed to clear cache: ${error.message}`,
+          isError: true,
+        },
+      ]);
+      setErrorBanner(error.message);
+    } finally {
+      setIsClearingCache(false);
+      refreshSystemData();
+    }
+  };
+
   return (
     <main className="flex flex-col md:flex-row h-screen bg-gray-900 text-white">
       {/* Sidebar */}
@@ -271,6 +368,28 @@ const ChatPage = () => {
         <button className="flex items-center gap-2 bg-yellow-400 text-black px-4 py-2 rounded-md font-semibold hover:bg-yellow-500 transition whitespace-nowrap">
           <Plus className="w-4 h-4" /> New Chat
         </button>
+
+        {/* Model selector */}
+        <div className="bg-gray-800/60 border border-gray-700 rounded-md p-3 space-y-2">
+          <div className="flex items-center justify-between text-sm text-gray-300">
+            <span className="font-semibold">Model preference</span>
+            <span className="text-[10px] text-gray-500">UI only</span>
+          </div>
+          <select
+            value={selectedModel}
+            onChange={handleModelChange}
+            className="w-full bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+          >
+            {AVAILABLE_MODELS.map((model) => (
+              <option key={model.value} value={model.value}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-gray-400">
+            {AVAILABLE_MODELS.find((model) => model.value === selectedModel)?.description}
+          </p>
+        </div>
 
         {/* Upload status */}
         <div className="space-y-3 mt-4">
@@ -301,14 +420,48 @@ const ChatPage = () => {
             <FileText className="w-5 h-5 text-yellow-400" />
             Indexed Content
           </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleClearCache}
+              disabled={isClearingCache || documents.length === 0}
+              className="flex-1 flex items-center justify-center gap-2 text-xs bg-gray-700/70 px-2 py-1 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClearingCache ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <span role="img" aria-label="broom">
+                  🧹
+                </span>
+              )}
+              Clear Cache
+            </button>
+          </div>
           {documents.length === 0 ? (
             <p className="text-gray-500 text-sm">No indexed items yet.</p>
           ) : (
             <div className="space-y-2">
               {documents.slice(-6).reverse().map((doc) => (
-                <div key={doc.id} className="bg-gray-700/70 p-2 rounded-md text-xs">
-                  <p className="font-semibold text-gray-200 truncate">{doc.source}</p>
-                  <p className="text-gray-400 capitalize">Type: {doc.doc_type}</p>
+                <div key={doc.id} className="bg-gray-700/70 p-2 rounded-md text-xs space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="truncate">
+                      <p className="font-semibold text-gray-200 truncate">{doc.source}</p>
+                      <p className="text-gray-400 capitalize">Type: {doc.doc_type}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteDocument(doc.id, doc.source)}
+                      disabled={deletingDocId === doc.id}
+                      className="flex items-center gap-1 bg-gray-900/60 hover:bg-red-500/20 text-red-300 px-2 py-1 rounded-md transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {deletingDocId === doc.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <span role="img" aria-label="trash">
+                          🗑️
+                        </span>
+                      )}
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
               {documents.length > 6 && (

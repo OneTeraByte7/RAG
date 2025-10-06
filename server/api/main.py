@@ -392,15 +392,28 @@ async def query_system(request: QueryRequest):
         
         # Prepare contexts for LLM
         contexts = []
-        for result in all_results[:10]:  # Top 10 for LLM
+        seen_keys = set()
+        context_cap = min(6, getattr(settings, "RERANK_TOP_K", 10))
+
+        for result in all_results:
+            metadata = result.get("metadata", {}) or {}
+            doc_key = metadata.get("doc_id") or metadata.get("source") or result["id"]
+
+            if doc_key in seen_keys:
+                continue
+
+            seen_keys.add(doc_key)
             contexts.append({
                 "id": result["id"],
                 "text": result["text"],
-                "type": result.get("metadata", {}).get("type", "unknown"),
-                "source": result.get("metadata", {}).get("source", "unknown"),
-                "page": result.get("metadata", {}).get("page", ""),
+                "type": metadata.get("type", "unknown"),
+                "source": metadata.get("source", "unknown"),
+                "page": metadata.get("page", ""),
                 "score": result["score"]
             })
+
+            if len(contexts) >= context_cap:
+                break
         
         # Generate answer
         llm_result = llm.generate_answer(request.query, contexts)
