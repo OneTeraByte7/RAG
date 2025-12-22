@@ -2,9 +2,11 @@
 FastAPI application for Multimodal RAG System
 """
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
+import re
 import time
 from pathlib import Path
 import shutil
@@ -47,11 +49,246 @@ search_engine = None
 query_router = None
 
 
+SMALL_TALK_RESPONSES = [
+    {
+        "triggers": {"hi", "hi!", "hello", "hello!", "hey", "hey!", "hey there", "hola"},
+        "response": "Hi there! 👋 I'm ready when you are—ask about any uploaded document or drop a new file to begin."
+    },
+    {
+        "triggers": {"thanks", "thank you", "thank you!", "thanks!", "thanks a lot"},
+        "response": "Any time! If you need a quick recap or want to dig into specific sections, just let me know."
+    },
+    {
+        "triggers": {"good morning", "good afternoon", "good evening"},
+        "response": "Hello! Hope you're having a great day. I'm here to summarize documents, answer questions, or help you find key points."
+    }
+]
+
+
+def match_small_talk(query_text: str) -> Optional[str]:
+    if not query_text:
+        return None
+
+    normalized = " ".join(query_text.lower().strip().split())
+    if not normalized:
+        return None
+
+    for item in SMALL_TALK_RESPONSES:
+        if normalized in item["triggers"]:
+            return item["response"]
+
+    if any(normalized.startswith(prefix) for prefix in ("hi ", "hello ", "hey ")):
+        return SMALL_TALK_RESPONSES[0]["response"]
+
+    return None
+
+
+def normalize_display_value(value: Optional[str], fallback: str = "Not specified") -> str:
+    if value is None:
+        return fallback
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned or cleaned.lower() in {"unknown", "n/a", "na", "none", "null"}:
+            return fallback
+        return cleaned
+
+    return str(value)
+
+
+SANITIZE_TRANSLATION = str.maketrans({
+    "#": "",
+    "_": "",
+    "*": "",
+    ".": ""
+})
+
+
+def sanitize_answer_text(text: Optional[str]) -> str:
+    if not text:
+        return ""
+
+    sanitized = text.translate(SANITIZE_TRANSLATION)
+    sanitized = re.sub(r"\bunknown\b", "Not specified", sanitized, flags=re.IGNORECASE)
+    sanitized = re.sub(r" {2,}", " ", sanitized)
+    sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+    return sanitized.strip()
+
+
+AADHAAR_NUMBER_REGEX = re.compile(r"(?:(?:\d{4}\s\d{4}\s\d{4})|\d{12})")
+LEGIT_QUERY_KEYWORDS = {
+    "legit",
+    "legitimate",
+    "authentic",
+    "genuine",
+    "real",
+    "fake",
+    "valid",
+    "validity",
+    "authenticity",
+    "original",
+    "fraud"
+}
+
+
+def _format_aadhaar_number(raw: str) -> str:
+    digits_only = re.sub(r"\D", "", raw or "")
+    if len(digits_only) != 12:
+        return raw.strip()
+    return f"{digits_only[0:4]} {digits_only[4:8]} {digits_only[8:12]}"
+
+
+def _collect_aadhaar_numbers(contexts: List[Dict]) -> List[Dict]:
+    matches = []
+    for idx, ctx in enumerate(contexts):
+        text_blob = " ".join([
+            ctx.get("raw_text", ""),
+            ctx.get("text", "")
+        ])
+        if not text_blob:
+            continue
+        raw_numbers = AADHAAR_NUMBER_REGEX.findall(text_blob)
+        formatted_numbers = []
+        for number in raw_numbers:
+            formatted = _format_aadhaar_number(number)
+            if formatted not in formatted_numbers:
+                formatted_numbers.append(formatted)
+        if formatted_numbers:
+            matches.append({
+                "index": idx,
+                "numbers": formatted_numbers
+            })
+    return matches
+
+
+def _collect_legitimacy_features(contexts: List[Dict]) -> Dict[int, List[str]]:
+    features_by_index: Dict[int, List[str]] = {}
+    for idx, ctx in enumerate(contexts):
+        text_blob = " ".join([
+            ctx.get("raw_text", ""),
+            ctx.get("text", "")
+        ]).lower()
+        if not text_blob:
+            continue
+
+        features = []
+        if "secure qr" in text_blob or "offline verification" in text_blob:
+            features.append("mentions Secure QR code verification guidance")
+        if "uidai" in text_blob or "unique identification authority" in text_blob:
+            features.append("references UIDAI oversight")
+        if "aadhaar" in text_blob:
+            features.append("includes Aadhaar branding")
+        if "proof of identity" in text_blob:
+            features.append("states it is proof of identity")
+
+        if features:
+            features_by_index[idx] = features
+
+    return features_by_index
+
+
+def _build_citation_from_context(ctx: Dict, source_number: int) -> Dict:
+    snippet_source = ctx.get("raw_text") or ctx.get("text") or ""
+    return {
+        "source_id": ctx.get("id"),
+        "doc_id": normalize_display_value(ctx.get("doc_id"), ""),
+        "source_type": normalize_display_value(ctx.get("type")),
+        "source_name": normalize_display_value(ctx.get("source")),
+        "location": normalize_display_value(ctx.get("page")),
+        "text_snippet": sanitize_answer_text(snippet_source)[:200],
+        "source_number": source_number
+    }
+
+
+def _build_special_answer(query: str, contexts: List[Dict]) -> Optional[Dict]:
+    if not contexts:
+        return None
+
+    lowered_query = query.lower()
+    needs_legitimacy = any(keyword in lowered_query for keyword in LEGIT_QUERY_KEYWORDS)
+    needs_aadhaar_number = ("aadhaar" in lowered_query and "number" in lowered_query) or (
+        "12" in lowered_query and "digit" in lowered_query
+    )
+
+    aadhaar_matches = _collect_aadhaar_numbers(contexts)
+    legitimacy_features = _collect_legitimacy_features(contexts)
+
+    # Skip if no special handling is required or no supporting context
+    if not needs_legitimacy and not (needs_aadhaar_number and aadhaar_matches):
+        return None
+
+    citation_order: List[int] = []
+    for item in aadhaar_matches:
+        idx = item["index"]
+        if idx not in citation_order:
+            citation_order.append(idx)
+    for idx in legitimacy_features.keys():
+        if idx not in citation_order:
+            citation_order.append(idx)
+
+    if not citation_order:
+        return None
+
+    citations: List[Dict] = []
+    index_to_source_number: Dict[int, int] = {}
+    for idx in citation_order:
+        ctx = contexts[idx]
+        citation = _build_citation_from_context(ctx, len(citations) + 1)
+        citations.append(citation)
+        index_to_source_number[idx] = citation["source_number"]
+
+    answer_parts: List[str] = []
+
+    if needs_legitimacy:
+        feature_sentences = []
+        for idx, features in legitimacy_features.items():
+            source_number = index_to_source_number.get(idx)
+            if not source_number:
+                continue
+            described = "; ".join(sorted(set(features)))
+            if described:
+                feature_sentences.append(f"{described} [Source {source_number}]")
+
+        if feature_sentences:
+            feature_summary = "; ".join(feature_sentences)
+            answer_parts.append(
+                "I cannot guarantee the document's authenticity without scanning the Secure QR code, but the captured text "
+                f"{feature_summary}."
+            )
+        else:
+            # Reference the first available source for the disclaimer
+            first_source = index_to_source_number.get(citation_order[0])
+            answer_parts.append(
+                "I cannot confirm authenticity without offline verification of the Secure QR code [Source "
+                f"{first_source}]"
+            )
+
+    if needs_aadhaar_number and aadhaar_matches:
+        first_match = aadhaar_matches[0]
+        primary_number = first_match["numbers"][0]
+        source_number = index_to_source_number.get(first_match["index"], citations[0]["source_number"])
+        answer_parts.append(
+            f"The Aadhaar number visible in the image is {primary_number} [Source {source_number}]"
+        )
+
+    if not answer_parts:
+        return None
+
+    combined_answer = " ".join(answer_parts)
+
+    return {
+        "answer": combined_answer,
+        "citations": citations,
+        "num_sources_used": len(citations),
+        "already_formatted": True
+    }
+
+
 # Pydantic models
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 10
-    search_type: Optional[str] = "hybrid"  # hybrid, semantic, keyword
+    search_type: Optional[str] = "hybrid"  # hybrid, semantic, keyword, cross_modal
     filters: Optional[Dict] = None
 
 
@@ -62,6 +299,7 @@ class QueryResponse(BaseModel):
     num_sources: int
     processing_time_ms: float
     search_results: List[Dict]
+    stage_timings: Optional[Dict[str, float]] = None
 
 
 class DocumentUploadResponse(BaseModel):
@@ -361,85 +599,253 @@ async def query_system(request: QueryRequest):
     Query the RAG system
     """
     start_time = time.time()
+    timings: Dict[str, float] = {}
+    normalized_query = request.query.strip()
+    small_talk_reply = match_small_talk(normalized_query)
+
+    if small_talk_reply:
+        processing_time = (time.time() - start_time) * 1000
+        if metadata_store:
+            metadata_store.log_query({
+                "query": normalized_query,
+                "type": "small_talk",
+                "num_results": 0,
+                "response_time_ms": processing_time,
+                "stage_timings": {"total_ms": processing_time}
+            })
+
+        return QueryResponse(
+            query=normalized_query,
+            answer=small_talk_reply,
+            citations=[],
+            num_sources=0,
+            processing_time_ms=processing_time,
+            search_results=[],
+            stage_timings={"total_ms": processing_time}
+        )
     
     try:
         # Analyze query
-        query_analysis = query_router.analyze_query(request.query)
+        analysis_start = time.time()
+        query_analysis = query_router.analyze_query(normalized_query)
+        explicit_modalities = query_analysis.get("explicit_modalities", [])
+        default_modality_order = ["text", "image", "audio"]
+        modality_order = []
+        for modality in explicit_modalities:
+            if modality not in modality_order:
+                modality_order.append(modality)
+        for modality in default_modality_order:
+            if modality not in modality_order:
+                modality_order.append(modality)
+        timings["analysis_ms"] = (time.time() - analysis_start) * 1000
         
         # Perform search based on analysis
-        # Perform search based on analysis
-        if query_analysis["search_strategy"] == "cross_modal":
-            # For cross-modal, search text collection only for now
-            # (images need visual embeddings, not text embeddings)
-            all_results = search_engine.hybrid_search(
-                request.query,
-                collection_type="text",  # Force text only
-                top_k=request.top_k
+        search_start = time.time()
+        cross_modal_payload: Dict[str, List[Dict]] = {}
+        if query_analysis["search_strategy"] == "cross_modal" or request.search_type == "cross_modal":
+            per_type_k = max(2, min(5, request.top_k))
+            cross_modal_payload = search_engine.cross_modal_search(
+                normalized_query,
+                top_k_per_type=per_type_k
             )
+            all_results = []
+            for modality in modality_order:
+                modality_results = cross_modal_payload.get(modality, [])
+                for item in modality_results:
+                    enriched = item.copy()
+                    enriched.setdefault("metadata", {})
+                    enriched["modality"] = modality
+                    all_results.append(enriched)
         else:
             # Single modality search
-            target_modality = query_analysis["target_modalities"][0] if query_analysis["target_modalities"] else "text"
-            
-            # Only search text collection for text queries
-            if target_modality in ["image", "audio"]:
-                target_modality = "text"  # Fallback to text
-            
-            all_results = search_engine.hybrid_search(
-                request.query,
+            target_candidates = query_analysis["target_modalities"] or ["text"]
+            target_modality = explicit_modalities[0] if explicit_modalities else target_candidates[0]
+
+            hybrid_results = search_engine.hybrid_search(
+                normalized_query,
                 collection_type=target_modality,
                 top_k=request.top_k
             )
+
+            if not hybrid_results and target_modality != "text":
+                target_modality = "text"
+                hybrid_results = search_engine.hybrid_search(
+                    normalized_query,
+                    collection_type=target_modality,
+                    top_k=request.top_k
+                )
+            all_results = []
+            for item in hybrid_results:
+                enriched = item.copy()
+                enriched.setdefault("metadata", {})
+                enriched["modality"] = target_modality
+                all_results.append(enriched)
+        timings["retrieval_ms"] = (time.time() - search_start) * 1000
+
+        priority_lookup = {modality: index for index, modality in enumerate(modality_order)}
+
+        def priority_tuple(result: Dict) -> tuple:
+            modality = result.get("modality", "text")
+            score = result.get("score") or 0.0
+            return (
+                priority_lookup.get(modality, len(priority_lookup)),
+                -float(score)
+            )
+
+        all_results.sort(key=priority_tuple)
         
         # Prepare contexts for LLM
+        context_start = time.time()
         contexts = []
         seen_keys = set()
-        context_cap = min(6, getattr(settings, "RERANK_TOP_K", 10))
+        context_cap = min(4, getattr(settings, "RERANK_TOP_K", 10))
+
+        def summarize_result_text(modality: str, raw_text: str, meta: Dict) -> str:
+            text_block = raw_text or ""
+            if modality == "image":
+                source_name = normalize_display_value(meta.get("source"))
+                if text_block:
+                    return f"Image '{source_name}' OCR text: {text_block}"
+                return f"Image '{source_name}' with no readable text extracted."
+            if modality == "audio":
+                source_name = normalize_display_value(meta.get("source"))
+                start_ts = meta.get("start") or meta.get("timestamp")
+                if start_ts:
+                    return f"Audio clip '{source_name}' around {start_ts}s: {text_block}"
+                return f"Audio clip '{source_name}': {text_block}" if text_block else f"Audio clip '{source_name}' with limited transcript."
+            return text_block
 
         for result in all_results:
             metadata = result.get("metadata", {}) or {}
-            doc_key = metadata.get("doc_id") or metadata.get("source") or result["id"]
+            doc_identifier = (
+                metadata.get("doc_id")
+                or metadata.get("image_id")
+                or metadata.get("audio_id")
+                or metadata.get("source")
+                or result.get("id")
+            )
+
+            if isinstance(doc_identifier, str):
+                candidate = doc_identifier.strip()
+                if candidate.lower() in {"", "unknown", "not specified"}:
+                    doc_identifier = result.get("id")
+                else:
+                    doc_identifier = candidate
+            else:
+                doc_identifier = result.get("id")
+
+            doc_key = doc_identifier or result["id"]
 
             if doc_key in seen_keys:
+                continue
+
+            text_for_context = summarize_result_text(result.get("modality", "text"), result.get("text", ""), metadata)
+            if not text_for_context:
                 continue
 
             seen_keys.add(doc_key)
             contexts.append({
                 "id": result["id"],
-                "text": result["text"],
-                "type": metadata.get("type", "unknown"),
-                "source": metadata.get("source", "unknown"),
-                "page": metadata.get("page", ""),
-                "score": result["score"]
+                "text": text_for_context,
+                "type": normalize_display_value(metadata.get("type"), result.get("modality", "text")),
+                "source": normalize_display_value(metadata.get("source")),
+                "page": normalize_display_value(metadata.get("page") or metadata.get("location") or metadata.get("start"), ""),
+                "doc_id": normalize_display_value(doc_identifier, ""),
+                "score": result.get("score"),
+                "raw_text": result.get("text", "")
             })
 
             if len(contexts) >= context_cap:
                 break
+        timings["context_build_ms"] = (time.time() - context_start) * 1000
         
-        # Generate answer
-        llm_result = llm.generate_answer(request.query, contexts)
+        # Generate answer (with Aadhaar-specific shortcut when applicable)
+        special_result = _build_special_answer(normalized_query, contexts)
+        if special_result:
+            llm_result = special_result
+            timings["generation_ms"] = 0.0
+        else:
+            llm_start = time.time()
+            llm_result = llm.generate_answer(normalized_query, contexts)
+            timings["generation_ms"] = (time.time() - llm_start) * 1000
+
+        sanitized_answer = sanitize_answer_text(llm_result.get("answer"))
+
+        cleaned_citations = []
+        for citation in llm_result.get("citations", []):
+            cleaned_citations.append({
+                "source_id": citation.get("source_id"),
+                "doc_id": normalize_display_value(citation.get("doc_id"), ""),
+                "source_type": normalize_display_value(citation.get("source_type")),
+                "source_name": normalize_display_value(citation.get("source_name")),
+                "location": normalize_display_value(citation.get("location")),
+                "text_snippet": sanitize_answer_text(citation.get("text_snippet", "")),
+                "source_number": citation.get("source_number")
+            })
+
+        if (not sanitized_answer) and contexts:
+            fallback_summary = llm._build_extractive_summary(normalized_query, contexts)
+            sanitized_answer = sanitize_answer_text(fallback_summary.get("answer"))
+            cleaned_citations = []
+            for citation in fallback_summary.get("citations", []):
+                cleaned_citations.append({
+                    "source_id": citation.get("source_id"),
+                    "doc_id": normalize_display_value(citation.get("doc_id"), ""),
+                    "source_type": normalize_display_value(citation.get("source_type")),
+                    "source_name": normalize_display_value(citation.get("source_name")),
+                    "location": normalize_display_value(citation.get("location")),
+                    "text_snippet": sanitize_answer_text(citation.get("text_snippet", "")),
+                    "source_number": citation.get("source_number")
+                })
+
+        if not sanitized_answer:
+            fallback_text = ""
+            fallback_source = None
+
+            if cleaned_citations:
+                primary_citation = cleaned_citations[0]
+                fallback_text = primary_citation.get("text_snippet", "")
+                fallback_source = primary_citation.get("source_number")
+
+            if not fallback_text and contexts:
+                first_context = contexts[0]
+                fallback_text = sanitize_answer_text(first_context.get("raw_text") or first_context.get("text", ""))
+                fallback_source = 1 if contexts else None
+
+            if fallback_text:
+                sanitized_answer = fallback_text
+                if fallback_source and f"[Source {fallback_source}]" not in sanitized_answer:
+                    sanitized_answer = f"{sanitized_answer} [Source {fallback_source}]"
+
+            if not sanitized_answer:
+                sanitized_answer = "I could not assemble a readable summary from the available context."
         
         processing_time = (time.time() - start_time) * 1000
+        timings["total_ms"] = processing_time
         
         # Log query
         metadata_store.log_query({
-            "query": request.query,
+            "query": normalized_query,
             "type": query_analysis["search_strategy"],
             "num_results": len(all_results),
-            "response_time_ms": processing_time
+            "response_time_ms": processing_time,
+            "stage_timings": timings
         })
         
         return QueryResponse(
-            query=request.query,
-            answer=llm_result["answer"],
-            citations=llm_result["citations"],
-            num_sources=llm_result["num_sources_used"],
+            query=normalized_query,
+            answer=sanitized_answer,
+            citations=cleaned_citations,
+            num_sources=len(cleaned_citations),
             processing_time_ms=processing_time,
             search_results=[{
                 "id": r["id"],
-                "text": r["text"][:200] + "...",
-                "score": r["score"],
-                "metadata": r.get("metadata", {})
-            } for r in all_results[:10]]
+                "text": (r.get("text") or "")[:200] + ("..." if (r.get("text") or "").strip() else ""),
+                "score": r.get("score"),
+                "metadata": r.get("metadata", {}),
+                "modality": r.get("modality", "text")
+            } for r in all_results[:10]],
+            stage_timings=timings
         )
         
     except Exception as e:
@@ -490,6 +896,20 @@ async def get_document_details(doc_id: str):
     except Exception as e:
         logger.error(f"Error getting document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/documents/{doc_id}/download")
+async def download_document(doc_id: str):
+    """Stream the original document or media file to the client"""
+    doc = metadata_store.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_path = Path(doc.get("file_path", ""))
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not available on server")
+
+    return FileResponse(file_path, filename=file_path.name)
 
 
 async def delete_document_by_id(doc_id: str, doc: Optional[Dict] = None) -> Dict[str, int]:
