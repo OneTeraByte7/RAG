@@ -1,9 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, Fragment, useMemo } from "react";
 import {
   Send,
   User,
   Bot,
-  Plus,
+  MessageSquare,
+  MessageSquarePlus,
+  Trash2,
   Paperclip,
   File,
   Loader2,
@@ -12,6 +14,10 @@ import {
   FileText,
   Image as ImageIcon,
   Mic,
+  Timer,
+  BarChart3,
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import {
   uploadDocument,
@@ -22,10 +28,135 @@ import {
   getStats,
   deleteDocument,
   deleteAllDocuments,
+  buildDocumentDownloadUrl
 } from "../services/api";
 const initialBotMessage = {
   sender: "bot",
-  text: "Hello! 👋 I'm your AI assistant. Upload a file or ask a question to get started.",
+  text: "Hello! 👋 I'm Quanta Quest, your multimodal AI copilot. Upload a file or ask a question to get started.",
+};
+
+const STORAGE_KEY = "ragSessions_v1";
+const ACTIVE_SESSION_KEY = "ragSessions_active";
+
+const cloneInitialBotMessage = () => ({ ...initialBotMessage });
+
+const generateSessionId = () => {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+};
+
+const createSessionRecord = (title = "Chat 1") => ({
+  id: generateSessionId(),
+  title,
+  messages: [cloneInitialBotMessage()],
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+});
+
+const sanitiseSessionRecord = (session, fallbackTitle) => ({
+  id: session?.id || generateSessionId(),
+  title: session?.title || fallbackTitle,
+  messages:
+    Array.isArray(session?.messages) && session.messages.length
+      ? session.messages
+      : [cloneInitialBotMessage()],
+  createdAt: session?.createdAt || Date.now(),
+  updatedAt: session?.updatedAt || Date.now(),
+});
+
+const loadSessionsFromStorage = () => {
+  if (typeof window === "undefined") {
+    return [createSessionRecord()];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return [createSessionRecord()];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) {
+      return [createSessionRecord()];
+    }
+
+    return parsed.map((session, index) => sanitiseSessionRecord(session, `Chat ${index + 1}`));
+  } catch (error) {
+    console.warn("Failed to load chat sessions from storage", error);
+    return [createSessionRecord()];
+  }
+};
+
+const getLargestSessionIndex = (sessions) => {
+  if (!Array.isArray(sessions) || !sessions.length) {
+    return 1;
+  }
+
+  return sessions.reduce((accumulator, session, index) => {
+    const match = String(session?.title ?? "").match(/(\d+)(?!.*\d)/);
+    const numericValue = match ? Number(match[1]) : index + 1;
+    return Number.isFinite(numericValue) ? Math.max(accumulator, numericValue) : accumulator;
+  }, sessions.length);
+};
+
+const deriveTitleFromPrompt = (prompt) => {
+  if (!prompt) {
+    return "New chat";
+  }
+
+  const trimmed = prompt.trim().replace(/\s+/g, " ");
+  if (!trimmed) {
+    return "New chat";
+  }
+
+  return trimmed.length > 42 ? `${trimmed.slice(0, 39)}…` : trimmed;
+};
+
+const getSessionPreview = (session) => {
+  if (!session?.messages?.length) {
+    return "No messages yet.";
+  }
+
+  const lastMessage = [...session.messages].reverse().find((message) => message?.text);
+  if (!lastMessage?.text) {
+    return "No messages yet.";
+  }
+
+  const sanitized = lastMessage.text.replace(/\s+/g, " ").trim();
+  if (!sanitized) {
+    return "No messages yet.";
+  }
+
+  return sanitized.length > 60 ? `${sanitized.slice(0, 57)}…` : sanitized;
+};
+
+const formatUpdatedTimestamp = (timestamp) => {
+  if (!timestamp) {
+    return "";
+  }
+
+  try {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const now = new Date();
+    const isSameDay = date.toDateString() === now.toDateString();
+    if (isSameDay) {
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    return date.toLocaleDateString();
+  } catch (error) {
+    console.warn("Failed to format timestamp", error);
+    return "";
+  }
 };
 
 const AVAILABLE_MODELS = [
@@ -46,8 +177,38 @@ const AVAILABLE_MODELS = [
   }
 ];
 
+const TIMING_ORDER = [
+  "analysis_ms",
+  "retrieval_ms",
+  "context_build_ms",
+  "generation_ms",
+  "total_ms"
+];
+
+const TIMING_LABELS = {
+  analysis_ms: "Analysis",
+  retrieval_ms: "Retrieval",
+  context_build_ms: "Context",
+  generation_ms: "Generation",
+  total_ms: "Total"
+};
+
 const ChatPage = () => {
-  const [messages, setMessages] = useState([initialBotMessage]);
+  const initialSessionsRef = useRef();
+  if (!initialSessionsRef.current) {
+    initialSessionsRef.current = loadSessionsFromStorage();
+  }
+
+  const [sessions, setSessions] = useState(initialSessionsRef.current);
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedActiveId = window.localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (savedActiveId && initialSessionsRef.current.some((session) => session.id === savedActiveId)) {
+        return savedActiveId;
+      }
+    }
+    return initialSessionsRef.current[0]?.id ?? null;
+  });
   const [input, setInput] = useState("");
   const [uploads, setUploads] = useState([]);
   const [isSending, setIsSending] = useState(false);
@@ -58,7 +219,14 @@ const ChatPage = () => {
   const [deletingDocId, setDeletingDocId] = useState(null);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].value);
+  const [recentlyCopiedId, setRecentlyCopiedId] = useState(null);
+  const sessionCounterRef = useRef(getLargestSessionIndex(initialSessionsRef.current));
   const fileInputRef = useRef(null);
+  const currentSession = useMemo(
+    () => sessions.find((session) => session.id === activeSessionId) || sessions[0] || null,
+    [sessions, activeSessionId]
+  );
+  const messages = currentSession?.messages ?? [];
 
   const refreshSystemData = useCallback(async () => {
     try {
@@ -82,6 +250,164 @@ const ChatPage = () => {
   useEffect(() => {
     refreshSystemData();
   }, [refreshSystemData]);
+
+  const updateSession = useCallback((sessionId, updater) => {
+    if (!sessionId) {
+      return;
+    }
+
+    setSessions((prev) =>
+      prev.map((session) => {
+        if (session.id !== sessionId) {
+          return session;
+        }
+
+        const nextState = updater(session);
+        if (!nextState) {
+          return session;
+        }
+
+        const shouldRefreshTimestamp =
+          Object.prototype.hasOwnProperty.call(nextState, "messages") ||
+          Object.prototype.hasOwnProperty.call(nextState, "title") ||
+          Object.prototype.hasOwnProperty.call(nextState, "updatedAt");
+
+        const updatedAt = shouldRefreshTimestamp
+          ? nextState.updatedAt !== undefined
+            ? nextState.updatedAt
+            : Date.now()
+          : session.updatedAt;
+
+        return {
+          ...session,
+          ...nextState,
+          updatedAt,
+        };
+      })
+    );
+  }, []);
+
+  const appendMessages = useCallback(
+    (sessionId, newMessages) => {
+      if (!sessionId || !Array.isArray(newMessages) || newMessages.length === 0) {
+        return;
+      }
+
+      updateSession(sessionId, (session) => ({
+        messages: [...(session.messages || []), ...newMessages],
+      }));
+    },
+    [updateSession]
+  );
+
+  const handleNewChat = useCallback(() => {
+    const nextIndex = (sessionCounterRef.current || 0) + 1;
+    sessionCounterRef.current = nextIndex;
+    const newSession = createSessionRecord(`Chat ${nextIndex}`);
+
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    setInput("");
+    setErrorBanner(null);
+    setIsSending(false);
+  }, []);
+
+  const handleClearAllChats = useCallback(() => {
+    if (!sessions.length) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const confirmation = window.confirm(
+        "Clear all chats? This will remove every saved conversation and start a fresh session."
+      );
+      if (!confirmation) {
+        return;
+      }
+    }
+
+    const freshSession = createSessionRecord("Chat 1");
+    initialSessionsRef.current = [freshSession];
+    sessionCounterRef.current = 1;
+
+    setSessions([freshSession]);
+    setActiveSessionId(freshSession.id);
+    setInput("");
+    setErrorBanner(null);
+
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify([freshSession]));
+        window.localStorage.setItem(ACTIVE_SESSION_KEY, freshSession.id);
+      }
+    } catch (error) {
+      console.warn("Unable to persist cleared chat state", error);
+    }
+  }, [sessions]);
+
+  const handleSelectSession = useCallback(
+    (sessionId) => {
+      if (!sessionId || sessionId === activeSessionId) {
+        return;
+      }
+
+      setActiveSessionId(sessionId);
+      setInput("");
+      setErrorBanner(null);
+      setIsSending(false);
+    },
+    [activeSessionId]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (error) {
+      console.warn("Unable to persist chat sessions", error);
+    }
+  }, [sessions]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      if (!activeSessionId) {
+        window.localStorage.removeItem(ACTIVE_SESSION_KEY);
+      } else {
+        window.localStorage.setItem(ACTIVE_SESSION_KEY, activeSessionId);
+      }
+    } catch (error) {
+      console.warn("Unable to persist active chat session", error);
+    }
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    if ((!activeSessionId || !sessions.some((session) => session.id === activeSessionId)) && sessions[0]) {
+      setActiveSessionId(sessions[0].id);
+    }
+  }, [sessions, activeSessionId]);
+
+  useEffect(() => {
+    sessionCounterRef.current = Math.max(
+      sessionCounterRef.current || 0,
+      getLargestSessionIndex(sessions)
+    );
+  }, [sessions]);
+
+  useEffect(() => {
+    if (!recentlyCopiedId) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => setRecentlyCopiedId(null), 2000);
+    return () => clearTimeout(timeout);
+  }, [recentlyCopiedId]);
 
   const resolveUploadTarget = (file) => {
     const mime = file.type?.toLowerCase() || "";
@@ -155,13 +481,19 @@ const ChatPage = () => {
     setErrorBanner(null);
     setIsUploading(true);
 
+    const sessionId = currentSession?.id;
+    if (!sessionId) {
+      setErrorBanner("No active chat session is available. Start a new chat first.");
+      setIsUploading(false);
+      return;
+    }
+
     for (const file of selectedFiles) {
       const target = resolveUploadTarget(file);
       const uploadId = `${file.name}-${Date.now()}`;
 
       if (!target) {
-        setMessages((prev) => [
-          ...prev,
+        appendMessages(sessionId, [
           {
             sender: "bot",
             text: `⚠️ ${file.name} has an unsupported format. Please upload PDF, DOCX, image, or audio files.`,
@@ -189,8 +521,7 @@ const ChatPage = () => {
           details: response,
         });
 
-        setMessages((prev) => [
-          ...prev,
+        appendMessages(sessionId, [
           {
             sender: "bot",
             text: buildUploadSummary(file, target.type, response),
@@ -204,8 +535,7 @@ const ChatPage = () => {
           error: error.message,
         });
 
-        setMessages((prev) => [
-          ...prev,
+        appendMessages(sessionId, [
           {
             sender: "bot",
             text: `❌ Failed to upload ${file.name}: ${error.message}`,
@@ -228,17 +558,40 @@ const ChatPage = () => {
 
     const question = input.trim();
     const userMessage = { sender: "user", text: question };
-    setMessages((prev) => [...prev, userMessage]);
+    const loadingMessage = {
+      sender: "bot",
+      text: "",
+      isLoading: true,
+      meta: null,
+    };
+    const sessionId = currentSession?.id;
+    if (!sessionId) {
+      return;
+    }
+
+    updateSession(sessionId, (session) => {
+      const baseMessages = session.messages || [];
+      const updatedMessages = [...baseMessages, userMessage, loadingMessage];
+      const hasUserMessage = baseMessages.some((message) => message.sender === "user");
+
+      return {
+        messages: updatedMessages,
+        ...(hasUserMessage ? {} : { title: deriveTitleFromPrompt(question) }),
+      };
+    });
     setInput("");
     setIsSending(true);
     setErrorBanner(null);
 
     try {
-      const response = await queryRag({ query: question, top_k: 6 });
+  const response = await queryRag({ query: question, top_k: 4 });
 
-      setMessages((prev) => [
-        ...prev,
-        {
+      updateSession(sessionId, (session) => {
+        const updated = [...(session.messages || [])];
+        const placeholderIndex = [...updated].reverse().findIndex((msg) => msg.isLoading);
+        const actualIndex = placeholderIndex === -1 ? -1 : updated.length - 1 - placeholderIndex;
+
+        const botMessage = {
           sender: "bot",
           text: response.answer,
           citations: response.citations,
@@ -246,19 +599,42 @@ const ChatPage = () => {
           meta: {
             processingTime: response.processing_time_ms,
             sources: response.num_sources,
+            stageTimings: response.stage_timings || null,
           },
-        },
-      ]);
+        };
+
+        if (actualIndex >= 0) {
+          updated[actualIndex] = botMessage;
+        } else {
+          updated.push(botMessage);
+        }
+
+        return {
+          messages: updated,
+        };
+      });
     } catch (error) {
       console.error("Query failed", error);
-      setMessages((prev) => [
-        ...prev,
-        {
+      updateSession(sessionId, (session) => {
+        const updated = [...(session.messages || [])];
+        const placeholderIndex = [...updated].reverse().findIndex((msg) => msg.isLoading);
+        const actualIndex = placeholderIndex === -1 ? -1 : updated.length - 1 - placeholderIndex;
+        const errorMessage = {
           sender: "bot",
           text: `I ran into an issue while processing your question: ${error.message}`,
           isError: true,
-        },
-      ]);
+        };
+
+        if (actualIndex >= 0) {
+          updated[actualIndex] = errorMessage;
+        } else {
+          updated.push(errorMessage);
+        }
+
+        return {
+          messages: updated,
+        };
+      });
       setErrorBanner(error.message);
     } finally {
       setIsSending(false);
@@ -287,17 +663,60 @@ const ChatPage = () => {
     return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />;
   };
 
+  const getModalityIcon = (modality) => {
+    switch ((modality || "text").toLowerCase()) {
+      case "image":
+        return <ImageIcon className="h-4 w-4 text-yellow-300" />;
+      case "audio":
+        return <Mic className="h-4 w-4 text-emerald-300" />;
+      default:
+        return <FileText className="h-4 w-4 text-sky-300" />;
+    }
+  };
+
+  const formatLocationLabel = (location) => {
+    if (!location || location === "N/A") {
+      return "Referenced";
+    }
+    return location;
+  };
+
+  const handleOpenSource = (docId) => {
+    const url = buildDocumentDownloadUrl(docId);
+    if (!url) {
+      setErrorBanner("Source file is no longer available for download.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleCopyDocId = async (docId) => {
+    if (!docId) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(docId);
+      setRecentlyCopiedId(docId);
+    } catch (error) {
+      console.error("Failed to copy doc ID", error);
+      setErrorBanner("Unable to copy document ID. You can copy it manually from the citation card.");
+    }
+  };
+
   const handleModelChange = (event) => {
     const { value } = event.target;
     setSelectedModel(value);
     const picked = AVAILABLE_MODELS.find((model) => model.value === value);
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: "bot",
-        text: `✅ Model preference set to ${picked?.label || value}. (UI-only setting)`
-      }
-    ]);
+    const sessionId = currentSession?.id;
+    if (sessionId) {
+      appendMessages(sessionId, [
+        {
+          sender: "bot",
+          text: `✅ Model preference set to ${picked?.label || value}.`
+        }
+      ]);
+    }
   };
 
   const handleDeleteDocument = async (docId, docSource) => {
@@ -306,25 +725,28 @@ const ChatPage = () => {
     }
     setDeletingDocId(docId);
     setErrorBanner(null);
+    const sessionId = currentSession?.id;
 
     try {
       const response = await deleteDocument(docId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: `🧹 Removed ${docSource || docId} from the cache. ${response.message || ""}`.trim(),
-        },
-      ]);
+      if (sessionId) {
+        appendMessages(sessionId, [
+          {
+            sender: "bot",
+            text: `🧹 Removed ${docSource || docId} from the cache. ${response.message || ""}`.trim(),
+          },
+        ]);
+      }
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: `❌ Failed to delete ${docSource || docId}: ${error.message}`,
-          isError: true,
-        },
-      ]);
+      if (sessionId) {
+        appendMessages(sessionId, [
+          {
+            sender: "bot",
+            text: `❌ Failed to delete ${docSource || docId}: ${error.message}`,
+            isError: true,
+          },
+        ]);
+      }
       setErrorBanner(error.message);
     } finally {
       setDeletingDocId(null);
@@ -335,25 +757,28 @@ const ChatPage = () => {
   const handleClearCache = async () => {
     setIsClearingCache(true);
     setErrorBanner(null);
+    const sessionId = currentSession?.id;
 
     try {
       const response = await deleteAllDocuments();
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: `🗑️ Cleared cached documents. ${response.message || ""}`.trim(),
-        },
-      ]);
+      if (sessionId) {
+        appendMessages(sessionId, [
+          {
+            sender: "bot",
+            text: `🗑️ Cleared cached documents. ${response.message || ""}`.trim(),
+          },
+        ]);
+      }
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: `❌ Failed to clear cache: ${error.message}`,
-          isError: true,
-        },
-      ]);
+      if (sessionId) {
+        appendMessages(sessionId, [
+          {
+            sender: "bot",
+            text: `❌ Failed to clear cache: ${error.message}`,
+            isError: true,
+          },
+        ]);
+      }
       setErrorBanner(error.message);
     } finally {
       setIsClearingCache(false);
@@ -361,19 +786,101 @@ const ChatPage = () => {
     }
   };
 
+  const renderRichText = (text, isUser = false) => {
+    if (!text) {
+      return null;
+    }
+
+    const paragraphs = text
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+
+    if (paragraphs.length === 0) {
+      return (
+        <p className={`text-sm leading-relaxed ${isUser ? "text-slate-900" : "text-gray-200"}`}>
+          {text}
+        </p>
+      );
+    }
+
+    return paragraphs.map((paragraph, index) => {
+      const lines = paragraph.split("\n");
+      return (
+        <p
+          key={`${index}-${paragraph.slice(0, 20)}`}
+          className={`text-sm leading-relaxed ${isUser ? "text-slate-900" : "text-gray-200"}`}
+        >
+          {lines.map((line, lineIdx) => (
+            <Fragment key={`${index}-${lineIdx}`}>
+              {line}
+              {lineIdx < lines.length - 1 && <br />}
+            </Fragment>
+          ))}
+        </p>
+      );
+    });
+  };
+
   return (
-    <main className="flex flex-col md:flex-row h-screen bg-gray-900 text-white">
+  <main className="flex h-screen flex-col md:flex-row bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 text-white">
       {/* Sidebar */}
       <aside className="flex flex-col w-full md:w-64 bg-gray-800 border-t md:border-t-0 md:border-r border-gray-700 p-4 space-y-4 overflow-y-auto">
-        <button className="flex items-center gap-2 bg-yellow-400 text-black px-4 py-2 rounded-md font-semibold hover:bg-yellow-500 transition whitespace-nowrap">
-          <Plus className="w-4 h-4" /> New Chat
+        <button
+          onClick={handleNewChat}
+          className="flex items-center gap-2 bg-yellow-400 text-black px-4 py-2 rounded-md font-semibold hover:bg-yellow-500 transition whitespace-nowrap"
+        >
+          <MessageSquarePlus className="w-4 h-4" /> New Chat
         </button>
+        <button
+          onClick={handleClearAllChats}
+          disabled={sessions.length === 0}
+          className="flex items-center gap-2 bg-gray-700/80 text-gray-200 px-4 py-2 rounded-md font-semibold hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Trash2 className="w-4 h-4" /> Clear All Chats
+        </button>
+
+        <div className="space-y-3">
+          <h2 className="flex items-center gap-2 text-gray-300 font-semibold">
+            <MessageSquare className="w-5 h-5 text-yellow-400" />
+            Your Chats
+          </h2>
+          {sessions.length === 0 ? (
+            <p className="text-gray-500 text-sm">Start a conversation to see it here.</p>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {sessions.map((session) => {
+                const isActive = session.id === currentSession?.id;
+                return (
+                  <button
+                    key={session.id}
+                    onClick={() => handleSelectSession(session.id)}
+                    className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                      isActive
+                        ? "border-yellow-400/80 bg-yellow-500/10 text-yellow-100 shadow-[0_12px_24px_-18px_rgba(250,204,21,0.65)]"
+                        : "border-gray-700/60 bg-gray-700/50 text-gray-200 hover:border-yellow-400/40 hover:bg-gray-700/80"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                      <span className="truncate">{session.title}</span>
+                      <span className="text-[10px] font-medium text-gray-400">
+                        {formatUpdatedTimestamp(session.updatedAt)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-400 truncate">
+                      {getSessionPreview(session)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Model selector */}
         <div className="bg-gray-800/60 border border-gray-700 rounded-md p-3 space-y-2">
           <div className="flex items-center justify-between text-sm text-gray-300">
             <span className="font-semibold">Model preference</span>
-            <span className="text-[10px] text-gray-500">UI only</span>
           </div>
           <select
             value={selectedModel}
@@ -491,58 +998,220 @@ const ChatPage = () => {
           </div>
         )}
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-start space-x-3 ${msg.sender === "user" ? "justify-end" : "justify-start"
-                }`}
-            >
-              {msg.sender === "bot" && (
-                <Bot className="w-8 h-8 text-yellow-400" />
-              )}
-              <div
-                className={`max-w-xs md:max-w-2xl px-4 py-3 rounded-2xl whitespace-pre-wrap break-words ${msg.sender === "user"
-                    ? "bg-yellow-400 text-black rounded-br-none"
-                    : msg.isError
-                      ? "bg-red-500/10 text-red-200 border border-red-400/60 rounded-bl-none"
-                      : "bg-gray-800 text-white rounded-bl-none"
-                  }`}
-              >
-                <p>{msg.text}</p>
-                {msg.meta && (
-                  <p className="mt-2 text-xs text-gray-300">
-                    Answered in {Math.round(msg.meta.processingTime || 0)} ms · Sources used: {msg.meta.sources ?? 0}
-                  </p>
-                )}
-                {msg.citations?.length > 0 && (
-                  <div className="mt-3 space-y-2 text-xs text-gray-300">
-                    <p className="font-semibold text-gray-200">Citations</p>
-                    {msg.citations.map((citation, index) => (
-                      <div key={`${citation.source_id || index}-${index}`} className="bg-gray-900/40 p-2 rounded-md">
-                        <p className="text-gray-200">{citation.source_name} · {citation.location}</p>
-                        <p className="mt-1 text-gray-400">{citation.text_snippet}</p>
-                      </div>
-                    ))}
+        <div className="flex-1 overflow-y-auto px-3 py-4 md:px-8 md:py-8">
+          <div className="mx-auto flex max-w-4xl flex-col space-y-6">
+            {messages.map((msg, index) => {
+              const isUser = msg.sender === "user";
+              const isError = Boolean(msg.isError);
+              const meta = msg.meta || {};
+              const stageTimings = meta.stageTimings || null;
+
+              return (
+                <div
+                  key={index}
+                  className={`flex gap-3 ${isUser ? "flex-row-reverse text-right" : "text-left"}`}
+                >
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-yellow-400/80 via-amber-400/90 to-yellow-500 text-gray-900 shadow-lg ring-1 ring-yellow-300/60">
+                    {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                   </div>
-                )}
-                {msg.searchResults?.length > 0 && (
-                  <div className="mt-3 space-y-2 text-xs text-gray-300">
-                    <p className="font-semibold text-gray-200">Top matches</p>
-                    {msg.searchResults.map((result) => (
-                      <div key={result.id} className="bg-gray-900/40 p-2 rounded-md">
-                        <p className="text-gray-200">{result.metadata?.source ?? "Unknown source"}</p>
-                        <p className="mt-1 text-gray-400">{result.text}</p>
+
+                  <article
+                    className={`relative w-full max-w-2xl rounded-3xl border backdrop-blur transition-all ${
+                      isUser
+                        ? "bg-yellow-400 text-black border-yellow-300 shadow-[0_22px_46px_-28px_rgba(250,204,21,0.55)]"
+                        : isError
+                          ? "bg-red-500/15 border-red-400/40 text-red-100 shadow-[0_18px_35px_-28px_rgba(239,68,68,0.65)]"
+                          : "bg-gray-900/70 border-gray-700/60 text-gray-100 shadow-[0_20px_40px_-32px_rgba(15,23,42,0.9)]"
+                    } ${isUser ? "rounded-br-xl" : "rounded-bl-xl"}`}
+                  >
+                    <div className={`space-y-4 px-4 py-3 md:px-6 md:py-5 ${isUser ? "text-slate-900" : ""}`}>
+                      <header
+                        className={`flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide ${
+                          isUser ? "justify-end text-black/70" : "justify-between text-gray-400"
+                        }`}
+                      >
+                        <span>{isUser ? "You" : "Assistant"}</span>
+                        {!isUser && meta?.processingTime !== undefined && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-900/60 px-2 py-1 text-[10px] font-medium text-gray-300">
+                            <Timer className="h-3 w-3" />
+                            {Math.round(meta.processingTime || 0)} ms
+                          </span>
+                        )}
+                        {!isUser && typeof meta?.sources === "number" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-900/60 px-2 py-1 text-[10px] font-medium text-gray-300">
+                            <BarChart3 className="h-3 w-3" />
+                            {meta.sources} {meta.sources === 1 ? "source" : "sources"}
+                          </span>
+                        )}
+                      </header>
+
+                      <div className="space-y-3 text-sm leading-relaxed">
+                        {msg.isLoading ? (
+                          <div className="flex items-center gap-3 text-gray-300">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Preparing your answer…</span>
+                          </div>
+                        ) : (
+                          renderRichText(msg.text, isUser)
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {msg.sender === "user" && (
-                <User className="w-8 h-8 text-yellow-400" />
-              )}
-            </div>
-          ))}
+
+                      {!isUser && stageTimings && (
+                        <details className="group/stages mt-3 rounded-2xl border border-gray-700/60 bg-gray-900/50 px-4 py-3">
+                          <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold text-gray-300">
+                            <span>Timing breakdown</span>
+                            <span className="text-[11px] text-gray-500 group-open/stages:text-yellow-300">View details</span>
+                          </summary>
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            {TIMING_ORDER.filter((key) => stageTimings[key] !== undefined).map((key) => (
+                              <div
+                                key={key}
+                                className="rounded-xl border border-gray-700/50 bg-gray-900/60 px-3 py-2 text-left"
+                              >
+                                <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                                  {TIMING_LABELS[key] || key}
+                                </p>
+                                <p className="text-sm font-semibold text-gray-100">
+                                  {Math.round(stageTimings[key])} ms
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+
+                      {msg.citations?.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Citations
+                          </h4>
+                          <div className="grid gap-2">
+                            {msg.citations.map((citation, citationIndex) => (
+                              <div
+                                key={`${citation.source_id || citationIndex}-${citationIndex}`}
+                                className="rounded-xl border border-gray-700/50 bg-gray-900/60 px-3 py-3 text-left space-y-3"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800/70">
+                                      {getModalityIcon(citation.source_type)}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-200">
+                                        {citation.source_name || "Unknown source"}
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        {formatLocationLabel(citation.location)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {citation.doc_id && (
+                                    <button
+                                      onClick={() => handleOpenSource(citation.doc_id)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-gray-700/60 bg-gray-900/70 px-2 py-1 text-xs font-semibold text-gray-200 hover:border-yellow-400/60 hover:text-yellow-300 transition"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      View source
+                                    </button>
+                                  )}
+                                </div>
+                                {citation.text_snippet && (
+                                  <p className="rounded-lg border-l-2 border-yellow-400/60 bg-gray-900/80 px-3 py-2 text-sm text-gray-200">
+                                    {citation.text_snippet}
+                                  </p>
+                                )}
+                                {citation.doc_id && (
+                                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+                                    <span className="rounded-md bg-gray-900/70 px-2 py-1 font-mono text-xs text-gray-300">
+                                      Doc ID: {citation.doc_id}
+                                    </span>
+                                    <button
+                                      onClick={() => handleCopyDocId(citation.doc_id)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-gray-700/60 bg-gray-900/70 px-2 py-1 text-[11px] text-gray-200 hover:border-yellow-400/60 hover:text-yellow-300 transition"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                      Copy ID
+                                    </button>
+                                    {recentlyCopiedId === citation.doc_id && (
+                                      <span className="text-emerald-400 text-[11px]">Copied!</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.searchResults?.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Top matches
+                          </h4>
+                          <div className="grid gap-2">
+                            {msg.searchResults.map((result) => (
+                              <div
+                                key={result.id}
+                                className="rounded-xl border border-gray-700/50 bg-gray-900/60 px-3 py-3 text-left space-y-2"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800/70">
+                                      {getModalityIcon(result.modality)}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-200">
+                                        {result.metadata?.source ?? "Unknown source"}
+                                      </p>
+                                      <p className="text-xs text-gray-400 capitalize">
+                                        {result.modality || result.metadata?.type || "text"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {result.metadata?.doc_id && (
+                                    <button
+                                      onClick={() => handleOpenSource(result.metadata.doc_id)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-gray-700/60 bg-gray-900/70 px-2 py-1 text-xs font-semibold text-gray-200 hover:border-yellow-400/60 hover:text-yellow-300 transition"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      View source
+                                    </button>
+                                  )}
+                                </div>
+                                {result.text && (
+                                  <p className="rounded-lg border-l-2 border-gray-700/60 bg-gray-900/70 px-3 py-2 text-sm text-gray-300">
+                                    {result.text}
+                                  </p>
+                                )}
+                                {result.metadata?.doc_id && (
+                                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
+                                    <span className="rounded-md bg-gray-900/70 px-2 py-1 font-mono text-xs text-gray-300">
+                                      Doc ID: {result.metadata.doc_id}
+                                    </span>
+                                    {recentlyCopiedId === result.metadata.doc_id ? (
+                                      <span className="text-emerald-400 text-[11px]">Copied!</span>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleCopyDocId(result.metadata.doc_id)}
+                                        className="inline-flex items-center gap-1 rounded-md border border-gray-700/60 bg-gray-900/70 px-2 py-1 text-[11px] text-gray-200 hover:border-yellow-400/60 hover:text-yellow-300 transition"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                        Copy ID
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Input Box */}

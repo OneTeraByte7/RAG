@@ -95,9 +95,8 @@ const LandingPage = () => {
           ref={heroTitleRef}
           className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-mont z-3"
         >
-          <span className="text-yellow-400">AI</span> Assistant That <br />
-          <span className="text-yellow-400">Connects</span> All <br /> Your
-          <span className="text-yellow-400"> Digital Worlds</span>
+          Meet <span className="text-yellow-400">Quanta Quest</span>,<br />
+          Your Multimodal AI Copilot
         </h1>
 
         {/* Subheadline */}
@@ -105,9 +104,9 @@ const LandingPage = () => {
           ref={heroSubRef}
           className="mt-4 text-base md:text-xl text-white max-w-4xl z-3"
         >
-          Seamlessly search and interact with your documents, images, audio, and
-          more — all in one place. Boost productivity, save time, and unlock
-          insights instantly.
+          Navigate knowledge across every medium. Seamlessly search and interact
+          with your documents, images, audio, and more — all in one place. Boost
+          productivity, save time, and unlock insights instantly.
         </p>
 
         {/* Buttons */}
@@ -131,7 +130,7 @@ const LandingPage = () => {
         }}
       >
         <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Why Choose <span className="text-yellow-400">Our AI?</span>
+          Why Choose <span className="text-yellow-400">Quanta Quest?</span>
         </h2>
         <p className="text-gray-300 max-w-3xl mx-auto mb-12">
           Designed to power your digital life — from boosting productivity to
@@ -181,8 +180,8 @@ const LandingPage = () => {
             How <span className="text-white">It Works</span>
           </h2>
           <p className="max-w-3xl mx-auto mb-12">
-            Our AI assistant is simple, fast, and powerful. Here’s how you can
-            start transforming your workflow in just 3 steps.
+            Quanta Quest is simple, fast, and powerful. Here’s how you can start
+            transforming your workflow in just 3 steps.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
