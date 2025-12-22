@@ -4,8 +4,13 @@ export default function Navbar() {
   return (
     <nav className="px-6 py-2 flex items-center justify-between font-robo bg-black relative z-100">
       {/* Logo / Brand */}
-      <div className="text-2xl md:text-3xl font-extrabold tracking-wide  text-yellow-400 cursor-pointer">
-        Onmi<span className="text-white">AI</span>
+      <div className="flex flex-col leading-tight">
+        <div className="text-2xl md:text-3xl font-extrabold tracking-wide text-yellow-400 cursor-pointer">
+          Quanta<span className="text-white">Quest</span>
+        </div>
+        <span className="text-xs md:text-sm font-medium tracking-wide text-gray-300 uppercase">
+          Navigate Knowledge Across Every Medium
+        </span>
       </div>
 
       {/* Navigation Links */}
