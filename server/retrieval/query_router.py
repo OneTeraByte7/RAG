@@ -2,7 +2,7 @@
 Query router to determine optimal search strategy
 """
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from loguru import logger
 
 
@@ -39,12 +39,15 @@ class QueryRouter:
         """
         query_lower = query.lower()
         
+        target_modalities, explicit_modalities = self._detect_modalities(query_lower)
+
         analysis = {
             "query": query,
             "is_temporal": self._check_temporal(query_lower),
             "is_cross_modal": self._check_cross_modal(query_lower),
             "needs_exact_match": self._check_exact_match(query_lower),
-            "target_modalities": self._detect_modalities(query_lower),
+            "target_modalities": target_modalities,
+            "explicit_modalities": explicit_modalities,
             "search_strategy": "hybrid",  # Default
             "filters": {}
         }
@@ -81,25 +84,33 @@ class QueryRouter:
             return True
         return any(keyword in query for keyword in self.exact_keywords)
     
-    def _detect_modalities(self, query: str) -> List[str]:
+    def _detect_modalities(self, query: str) -> Tuple[List[str], List[str]]:
         """Detect which modalities to search"""
         modalities = set()
+        explicit = []
         
         # Check for specific modality mentions
         if any(word in query for word in ['image', 'picture', 'photo', 'screenshot', 'chart']):
             modalities.add('image')
+            explicit.append('image')
         
         if any(word in query for word in ['audio', 'recording', 'call', 'meeting', 'said']):
             modalities.add('audio')
+            explicit.append('audio')
         
         if any(word in query for word in ['document', 'report', 'pdf', 'text', 'page']):
             modalities.add('text')
+            explicit.append('text')
         
         # Default to all if none specified
         if not modalities:
             modalities = {'text', 'image', 'audio'}
         
-        return list(modalities)
+        # Ensure consistent modality ordering for deterministic behaviour
+        default_order = ['text', 'image', 'audio']
+        ordered_modalities = [m for m in default_order if m in modalities]
+
+        return ordered_modalities, explicit
     
     def _extract_temporal_filter(self, query: str) -> Dict:
         """Extract temporal constraints from query"""

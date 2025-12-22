@@ -3,7 +3,7 @@ Hybrid search combining semantic (vector) and keyword (BM25) search
 """
 import numpy as np
 from typing import List, Dict, Optional
-from collections import defaultdict
+from collections import defaultdict, Counter
 import math
 from loguru import logger
 
@@ -19,11 +19,14 @@ class BM25:
         self.k1 = k1
         self.b = b
         self.corpus = []
-        self.doc_freqs = []
         self.idf = {}
+        self.corpus_ids = []
         self.doc_len = []
         self.avgdl = 0
-        self.corpus_ids = []
+        self.tokenized_corpus = []
+        self.term_freqs = []
+        self.inverted_index = defaultdict(list)
+        self.norm_factors = []
     
     def fit(self, corpus: List[str], corpus_ids: List[str]):
         """
@@ -35,24 +38,40 @@ class BM25:
         """
         self.corpus = corpus
         self.corpus_ids = corpus_ids
-        
-        # Tokenize documents
+
+        # Tokenize documents once
         tokenized_corpus = [doc.lower().split() for doc in corpus]
-        
-        # Calculate document frequencies
+        self.tokenized_corpus = tokenized_corpus
+
+        # Calculate document frequencies and build inverted index
         df = defaultdict(int)
-        for doc in tokenized_corpus:
-            for word in set(doc):
+        self.inverted_index = defaultdict(list)
+        self.term_freqs = []
+
+        for idx, doc_tokens in enumerate(tokenized_corpus):
+            term_freq = Counter(doc_tokens)
+            self.term_freqs.append(term_freq)
+
+            for word in term_freq.keys():
                 df[word] += 1
-        
+                self.inverted_index[word].append(idx)
+
         # Calculate IDF
         num_docs = len(corpus)
         for word, freq in df.items():
             self.idf[word] = math.log((num_docs - freq + 0.5) / (freq + 0.5) + 1)
-        
-        # Store document lengths
-        self.doc_len = [len(doc) for doc in tokenized_corpus]
+
+        # Store document lengths and normalization factors
+        self.doc_len = [len(doc_tokens) for doc_tokens in tokenized_corpus]
         self.avgdl = sum(self.doc_len) / len(self.doc_len) if self.doc_len else 0
+        if self.doc_len:
+            avgdl = self.avgdl if self.avgdl > 0 else 1.0
+            self.norm_factors = [
+                self.k1 * (1 - self.b + self.b * dl / avgdl)
+                for dl in self.doc_len
+            ]
+        else:
+            self.norm_factors = []
         
         logger.info(f"BM25 index built with {num_docs} documents")
     
@@ -68,26 +87,28 @@ class BM25:
             List of results with scores
         """
         query_tokens = query.lower().split()
-        scores = np.zeros(len(self.corpus))
-        
+        num_docs = len(self.corpus)
+        if num_docs == 0:
+            return []
+
+        scores = np.zeros(num_docs, dtype=np.float32)
+
         for token in query_tokens:
-            if token not in self.idf:
+            idf_score = self.idf.get(token)
+            if idf_score is None:
                 continue
-            
-            idf_score = self.idf[token]
-            
-            for idx, doc in enumerate(self.corpus):
-                doc_tokens = doc.lower().split()
-                term_freq = doc_tokens.count(token)
-                
-                if term_freq == 0:
+
+            doc_indices = self.inverted_index.get(token)
+            if not doc_indices:
+                continue
+
+            for idx in doc_indices:
+                term_freq = self.term_freqs[idx].get(token)
+                if not term_freq:
                     continue
-                
-                doc_length = self.doc_len[idx]
-                norm_tf = (term_freq * (self.k1 + 1)) / (
-                    term_freq + self.k1 * (1 - self.b + self.b * doc_length / self.avgdl)
-                )
-                
+
+                norm_denominator = term_freq + self.norm_factors[idx] if self.norm_factors else term_freq + self.k1
+                norm_tf = (term_freq * (self.k1 + 1)) / norm_denominator
                 scores[idx] += idf_score * norm_tf
         
         # Get top-k results
