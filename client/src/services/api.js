@@ -1,5 +1,17 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
 
+const fetchWithHandling = async (...args) => {
+  try {
+    return await fetch(...args);
+  } catch (error) {
+    const message =
+      error?.message && error.message !== "Failed to fetch"
+        ? error.message
+        : "Unable to reach the AI backend. Make sure the FastAPI server is running on http://localhost:8000.";
+    throw new Error(message);
+  }
+};
+
 const handleResponse = async (response) => {
   const contentType = response.headers.get("content-type");
   const isJson = contentType && contentType.includes("application/json");
@@ -20,7 +32,7 @@ export const uploadDocument = async (file, documentId) => {
     formData.append("document_id", documentId);
   }
 
-  const response = await fetch(`${API_BASE_URL}/upload/document`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/upload/document`, {
     method: "POST",
     body: formData,
   });
@@ -32,7 +44,7 @@ export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/upload/image`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/upload/image`, {
     method: "POST",
     body: formData,
   });
@@ -44,7 +56,7 @@ export const uploadAudio = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/upload/audio`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/upload/audio`, {
     method: "POST",
     body: formData,
   });
@@ -53,7 +65,7 @@ export const uploadAudio = async (file) => {
 };
 
 export const queryRag = async (payload) => {
-  const response = await fetch(`${API_BASE_URL}/query`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/query`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -70,17 +82,17 @@ export const listDocuments = async (docType) => {
     url.searchParams.set("doc_type", docType);
   }
 
-  const response = await fetch(url.toString());
+  const response = await fetchWithHandling(url.toString());
   return handleResponse(response);
 };
 
 export const getStats = async () => {
-  const response = await fetch(`${API_BASE_URL}/stats`);
+  const response = await fetchWithHandling(`${API_BASE_URL}/stats`);
   return handleResponse(response);
 };
 
 export const deleteDocument = async (docId) => {
-  const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(docId)}`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/documents/${encodeURIComponent(docId)}`, {
     method: "DELETE",
   });
 
@@ -88,9 +100,17 @@ export const deleteDocument = async (docId) => {
 };
 
 export const deleteAllDocuments = async () => {
-  const response = await fetch(`${API_BASE_URL}/documents`, {
+  const response = await fetchWithHandling(`${API_BASE_URL}/documents`, {
     method: "DELETE",
   });
 
   return handleResponse(response);
+};
+
+export const buildDocumentDownloadUrl = (docId) => {
+  if (!docId) {
+    return null;
+  }
+
+  return `${API_BASE_URL}/documents/${encodeURIComponent(docId)}/download`;
 };
