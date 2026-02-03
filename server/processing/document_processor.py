@@ -8,6 +8,8 @@ from typing import List, Dict, Optional
 from loguru import logger
 import hashlib
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import multiprocessing
 
 from config.settings import settings
 
@@ -71,7 +73,7 @@ class PDFProcessor:
         
     def extract_text(self, pdf_path: str, doc_id: Optional[str] = None) -> Dict:
         """
-        Extract text and metadata from PDF
+        Extract text and metadata from PDF with parallel processing
         
         Args:
             pdf_path: Path to PDF file
@@ -83,28 +85,15 @@ class PDFProcessor:
         
         try:
             with pdfplumber.open(pdf_path) as pdf:
-                pages_data = []
-                full_text = []
+                total_pages = len(pdf.pages)
                 
-                for page_num, page in enumerate(pdf.pages, start=1):
-                    # Extract text
-                    text = page.extract_text()
-                    if text:
-                        full_text.append(text)
-                        
-                        # Extract tables
-                        tables = page.extract_tables()
-                        
-                        # Extract images
-                        images = page.images
-                        
-                        pages_data.append({
-                            "page_number": page_num,
-                            "text": text,
-                            "num_tables": len(tables) if tables else 0,
-                            "num_images": len(images) if images else 0,
-                            "tables": tables if tables else []
-                        })
+                # Use parallel processing for large PDFs
+                if settings.ENABLE_PARALLEL_PROCESSING and total_pages > 5:
+                    pages_data = self._extract_pages_parallel(pdf)
+                else:
+                    pages_data = self._extract_pages_sequential(pdf)
+                
+                full_text = [p["text"] for p in pages_data if p.get("text")]
                 
                 # Generate document ID (allow override)
                 override_doc_id = _sanitize_doc_id(doc_id)
@@ -160,6 +149,49 @@ class PDFProcessor:
         
         logger.info(f"Created {len(all_chunks)} chunks from PDF")
         return all_chunks
+    
+    def _extract_pages_sequential(self, pdf) -> List[Dict]:
+        """Extract pages sequentially"""
+        pages_data = []
+        for page_num, page in enumerate(pdf.pages, start=1):
+            page_data = self._extract_single_page(page, page_num)
+            pages_data.append(page_data)
+        return pages_data
+    
+    def _extract_pages_parallel(self, pdf) -> List[Dict]:
+        """Extract pages in parallel using threads"""
+        pages_data = []
+        max_workers = min(settings.MAX_WORKERS, len(pdf.pages))
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for page_num, page in enumerate(pdf.pages, start=1):
+                future = executor.submit(self._extract_single_page, page, page_num)
+                futures.append((page_num, future))
+            
+            # Collect results in order
+            for page_num, future in sorted(futures, key=lambda x: x[0]):
+                try:
+                    page_data = future.result()
+                    pages_data.append(page_data)
+                except Exception as e:
+                    logger.error(f"Error extracting page {page_num}: {e}")
+        
+        return pages_data
+    
+    def _extract_single_page(self, page, page_num: int) -> Dict:
+        """Extract data from a single page"""
+        text = page.extract_text()
+        tables = page.extract_tables() if hasattr(page, 'extract_tables') else []
+        images = page.images if hasattr(page, 'images') else []
+        
+        return {
+            "page_number": page_num,
+            "text": text or "",
+            "num_tables": len(tables) if tables else 0,
+            "num_images": len(images) if images else 0,
+            "tables": tables if tables else []
+        }
     
     def _generate_doc_id(self, file_path: str) -> str:
         """Generate unique document ID"""
