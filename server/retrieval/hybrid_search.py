@@ -77,7 +77,7 @@ class BM25:
     
     def search(self, query: str, top_k: int = 20) -> List[Dict]:
         """
-        Search using BM25
+        Search using BM25 with optimized scoring
         
         Args:
             query: Query string
@@ -91,33 +91,42 @@ class BM25:
         if num_docs == 0:
             return []
 
+        # Filter query tokens to only those in vocabulary
+        query_tokens = [token for token in query_tokens if token in self.idf]
+        
+        if not query_tokens:
+            return []
+
         scores = np.zeros(num_docs, dtype=np.float32)
 
+        # Optimized scoring loop
         for token in query_tokens:
-            idf_score = self.idf.get(token)
-            if idf_score is None:
-                continue
-
-            doc_indices = self.inverted_index.get(token)
-            if not doc_indices:
-                continue
-
+            idf_score = self.idf[token]
+            doc_indices = self.inverted_index[token]
+            
             for idx in doc_indices:
-                term_freq = self.term_freqs[idx].get(token)
-                if not term_freq:
-                    continue
-
+                term_freq = self.term_freqs[idx][token]
                 norm_denominator = term_freq + self.norm_factors[idx] if self.norm_factors else term_freq + self.k1
                 norm_tf = (term_freq * (self.k1 + 1)) / norm_denominator
                 scores[idx] += idf_score * norm_tf
         
-        # Get top-k results
-        top_indices = np.argsort(scores)[::-1][:top_k]
+        # Get top-k results efficiently
+        if top_k >= num_docs:
+            top_indices = np.argsort(scores)[::-1]
+        else:
+            top_indices = np.argpartition(scores, -top_k)[-top_k:]
+            top_indices = top_indices[np.argsort(scores[top_indices])[::-1]]
         
         results = [
             {
                 "id": self.corpus_ids[idx],
                 "text": self.corpus[idx],
+                "score": float(scores[idx])
+            }
+            for idx in top_indices if scores[idx] > 0
+        ]
+        
+        return results[:top_k]
                 "score": float(scores[idx])
             }
             for idx in top_indices if scores[idx] > 0
