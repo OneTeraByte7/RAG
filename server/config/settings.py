@@ -49,11 +49,14 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
     MAX_CHUNKS_PER_DOC: int = 1000
+    ENABLE_PARALLEL_PROCESSING: bool = True
+    MAX_WORKERS: int = 4
     
     # Retrieval Settings
     TOP_K_RETRIEVAL: int = 20
     RERANK_TOP_K: int = 10
     SIMILARITY_THRESHOLD: float = 0.7
+    ENABLE_FAST_SUMMARY: bool = True
     
     # Vector Database
     CHROMA_COLLECTION_NAME: str = "multimodal_rag"

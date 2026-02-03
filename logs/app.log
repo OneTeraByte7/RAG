@@ -1389,3 +1389,51 @@
 2025-12-22 13:35:54.109 | WARNING  | retrieval.hybrid_search:keyword_search:238 - No documents in audio collection for keyword search
 2025-12-22 13:39:33.462 | WARNING  | models.llm:_is_valid_grounded_answer:360 - Answer lacks proper citations
 2025-12-22 13:39:33.466 | WARNING  | models.llm:generate_answer:106 - Answer failed grounding validation; using extractive approach
+2026-02-03 19:53:37.687 | INFO     | __main__:main:519 - No CLI arguments supplied; starting API server in simple mode.
+2026-02-03 19:53:37.688 | INFO     | __main__:run_api_server:32 - Starting API server on 0.0.0.0:8000
+2026-02-03 19:56:04.925 | INFO     | api.main:startup_event:318 - Starting Multimodal RAG System...
+2026-02-03 19:56:04.926 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2026-02-03 19:56:19.265 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2026-02-03 19:56:27.434 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2026-02-03 19:56:27.434 | INFO     | models.llm:__init__:19 - Loading LLM on cpu
+2026-02-03 19:56:43.413 | INFO     | models.llm:__init__:49 - LLM loaded successfully
+2026-02-03 19:56:43.438 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2026-02-03 19:56:50.831 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2026-02-03 19:56:50.832 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2026-02-03 19:56:50.834 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2026-02-03 19:56:50.835 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2026-02-03 19:56:50.835 | INFO     | database.metadata_store:__init__:66 - Initializing metadata store
+2026-02-03 19:56:51.133 | INFO     | database.metadata_store:__init__:81 - Metadata store initialized
+2026-02-03 19:56:51.134 | INFO     | database.vector_store:__init__:20 - Initializing ChromaDB at F:\Smart India Hackathon_2025\SIH25231\data\vector_db
+2026-02-03 19:56:51.194 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: text_chunks
+2026-02-03 19:56:51.196 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: image_embeddings
+2026-02-03 19:56:51.197 | INFO     | database.vector_store:_get_or_create_collection:36 - Loaded existing collection: audio_transcripts
+2026-02-03 19:56:51.197 | INFO     | database.vector_store:__init__:30 - Vector store initialized
+2026-02-03 19:56:51.202 | INFO     | models.embeddings:__init__:20 - Loading text embedding model on cpu
+2026-02-03 19:57:04.714 | INFO     | models.embeddings:__init__:66 - Loading CLIP model on cpu
+2026-02-03 19:57:10.537 | INFO     | models.embeddings:__init__:126 - Multimodal embedder initialized
+2026-02-03 19:57:10.543 | INFO     | retrieval.hybrid_search:__init__:140 - Hybrid search engine initialized
+2026-02-03 19:57:10.549 | INFO     | api.main:startup_event:329 - All components initialized successfully
+2026-02-03 20:00:24.353 | INFO     | retrieval.query_router:analyze_query:67 - Query analysis: hybrid search, modalities: ['text', 'image', 'audio']
+2026-02-03 20:00:24.869 | WARNING  | retrieval.hybrid_search:keyword_search:232 - BM25 index not built for text, building now...
+2026-02-03 20:00:24.870 | INFO     | retrieval.hybrid_search:build_bm25_index:144 - Building BM25 index for text
+2026-02-03 20:00:25.091 | WARNING  | retrieval.hybrid_search:build_bm25_index:160 - No documents found in text collection
+2026-02-03 20:00:25.098 | WARNING  | retrieval.hybrid_search:keyword_search:238 - No documents in text collection for keyword search
+2026-02-03 20:00:32.923 | INFO     | database.vector_store:delete_by_source:330 - Deleted 1 entries from WhatsApp Image 2025-12-14 at 11.15.50 AM.jpeg in image_embeddings
+2026-02-03 20:00:32.998 | INFO     | database.metadata_store:delete_document:200 - Deleted document d134926bbd1c3639 (doc rows: 1, chunks: 0)
+2026-02-03 20:00:33.001 | INFO     | retrieval.hybrid_search:build_bm25_index:144 - Building BM25 index for image
+2026-02-03 20:00:33.004 | WARNING  | retrieval.hybrid_search:build_bm25_index:160 - No documents found in image collection
+2026-02-03 20:00:41.664 | INFO     | api.main:upload_document:373 - Processing document: Soham_SDE_Resume.pdf
+2026-02-03 20:00:41.671 | INFO     | processing.document_processor:extract_text:82 - Processing PDF: F:\Smart India Hackathon_2025\SIH25231\data\uploads\Soham_SDE_Resume.pdf
+2026-02-03 20:00:42.208 | INFO     | processing.document_processor:extract_text:126 - PDF processed: 1 pages
+2026-02-03 20:00:42.211 | INFO     | processing.document_processor:process_and_chunk:161 - Created 1 chunks from PDF
+2026-02-03 20:00:47.174 | INFO     | database.vector_store:add_text_chunks:127 - Added 1 text chunks to vector store
+2026-02-03 20:00:47.209 | INFO     | database.metadata_store:add_document:129 - Document metadata stored: 92012930a8386348
+2026-02-03 20:00:47.244 | INFO     | database.metadata_store:add_chunks:184 - Added 1 chunks for document 92012930a8386348
+2026-02-03 20:00:47.288 | INFO     | database.metadata_store:update_document_indexed:146 - Updated document 92012930a8386348 indexed status: True
+2026-02-03 20:00:47.290 | INFO     | retrieval.hybrid_search:build_bm25_index:144 - Building BM25 index for text
+2026-02-03 20:00:47.296 | INFO     | retrieval.hybrid_search:fit:76 - BM25 index built with 1 documents
+2026-02-03 20:00:47.297 | INFO     | retrieval.hybrid_search:build_bm25_index:169 - BM25 index built for text: 1 docs
+2026-02-03 20:00:54.366 | INFO     | retrieval.query_router:analyze_query:67 - Query analysis: hybrid search, modalities: ['text']
+2026-02-03 20:03:37.904 | WARNING  | models.llm:_is_valid_grounded_answer:360 - Answer lacks proper citations
+2026-02-03 20:03:37.917 | WARNING  | models.llm:generate_answer:106 - Answer failed grounding validation; using extractive approach
